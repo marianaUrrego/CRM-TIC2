@@ -1,6 +1,8 @@
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
-import { User, UserResponse, CreateUserRequest } from '../models/user.model';
+import { pool } from '../config/db';
+import { UserResponse, CreateUserRequest } from '../models/user.model';
 import { validatePassword, validateName, validateEmail } from '../utils/validation.util';
 
 export interface LoginRequest {
@@ -14,101 +16,130 @@ export interface LoginResponse {
   token: string;
 }
 
-let users: User[] = [];
-
 export class AuthService {
   static async register(userData: CreateUserRequest): Promise<UserResponse> {
-    // Validar nombre
     const nameValidation = validateName(userData.name);
     if (!nameValidation.isValid) {
       throw new Error(nameValidation.message);
     }
 
-    // Validar email
     const emailValidation = validateEmail(userData.email);
     if (!emailValidation.isValid) {
       throw new Error(emailValidation.message);
     }
 
-    // Validar contraseña
     const passwordValidation = validatePassword(userData.password);
     if (!passwordValidation.isValid) {
       throw new Error(passwordValidation.message);
     }
 
     const normalizedEmail = userData.email.trim().toLowerCase();
-    const normalizedPassword = userData.password;
+    const normalizedName = userData.name.trim();
 
-    console.log('REGISTER - datos recibidos:', userData);
+    const existingUserResult = await pool.query(
+      'SELECT id FROM users WHERE email = $1',
+      [normalizedEmail]
+    );
 
-    const existingUser = users.find(user => user.email === normalizedEmail);
-    if (existingUser) {
-      console.log('REGISTER - usuario ya existe:', existingUser);
+    if (existingUserResult.rows.length > 0) {
       throw new Error('User with this email already exists');
     }
 
-    const hashedPassword = await bcrypt.hash(normalizedPassword, 10);
+    const hashedPassword = await bcrypt.hash(userData.password, 10);
+    const userId = uuidv4();
 
-    const newUser: User = {
-      id: uuidv4(),
-      name: userData.name.trim(),
-      email: normalizedEmail,
-      password: hashedPassword
+    const insertResult = await pool.query(
+      `
+      INSERT INTO users (id, full_name, email, password_hash)
+      VALUES ($1, $2, $3, $4)
+      RETURNING id, full_name, email
+      `,
+      [userId, normalizedName, normalizedEmail, hashedPassword]
+    );
+
+    const createdUser = insertResult.rows[0];
+
+    return {
+      id: createdUser.id,
+      name: createdUser.full_name,
+      email: createdUser.email,
     };
-
-    users.push(newUser);
-
-    console.log('REGISTER - usuarios guardados:', users);
-
-    const { password, ...userResponse } = newUser;
-    return userResponse;
   }
 
-  static getAllUsers(): UserResponse[] {
-    return users.map(({ password, ...user }) => user);
+  static async getAllUsers(): Promise<UserResponse[]> {
+    const result = await pool.query(
+      `
+      SELECT id, full_name, email
+      FROM users
+      ORDER BY created_at DESC
+      `
+    );
+
+    return result.rows.map((user) => ({
+      id: user.id,
+      name: user.full_name,
+      email: user.email,
+    }));
   }
 
   static async login(loginData: LoginRequest): Promise<LoginResponse> {
-    // Validar email
     const emailValidation = validateEmail(loginData.email);
     if (!emailValidation.isValid) {
       throw new Error(emailValidation.message);
     }
 
-    // Validar formato de contraseña (antes de procesar)
-    const passwordValidation = validatePassword(loginData.password);
-    if (!passwordValidation.isValid) {
-      throw new Error(passwordValidation.message);
+    if (!loginData.password || loginData.password.trim() === '') {
+      throw new Error('Password is required');
     }
 
     const normalizedEmail = loginData.email.trim().toLowerCase();
-    const normalizedPassword = loginData.password;
 
-    console.log('LOGIN - datos recibidos:', loginData);
-    console.log('LOGIN - usuarios disponibles:', users);
+    const result = await pool.query(
+      `
+      SELECT id, full_name, email, password_hash
+      FROM users
+      WHERE email = $1
+      `,
+      [normalizedEmail]
+    );
 
-    const user = users.find(u => u.email === normalizedEmail);
-    console.log('LOGIN - usuario encontrado:', user);
-
-    if (!user) {
+    if (result.rows.length === 0) {
       throw new Error('Invalid credentials');
     }
 
-    const isPasswordValid = await bcrypt.compare(normalizedPassword, user.password);
-    console.log('LOGIN - password válido:', isPasswordValid);
+    const user = result.rows[0];
+
+    const isPasswordValid = await bcrypt.compare(
+      loginData.password,
+      user.password_hash
+    );
 
     if (!isPasswordValid) {
       throw new Error('Invalid credentials');
     }
 
-    const token = Buffer.from(`${user.id}:${Date.now()}`).toString('base64');
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET is not defined');
+    }
 
-    const { password, ...userResponse } = user;
+    const token = jwt.sign(
+      {
+        sub: user.id,
+        email: user.email,
+      },
+      jwtSecret,
+      { expiresIn: '1d' }
+    );
 
     return {
       message: 'Login successful',
-      user: userResponse,
-      token
+      user: {
+        id: user.id,
+        name: user.full_name,
+        email: user.email,
+      },
+      token,
     };
   }
 }

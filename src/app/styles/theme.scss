@@ -1,6 +1,5 @@
-/* theme.scss (Tailwind-free) */
 
-/* ✅ Variables base */
+/* Variables base */
 :root {
   --font-size: 16px;
   --background: #ffffff;
@@ -41,7 +40,7 @@
   --sidebar-ring: oklch(0.439 0 0);
 }
 
-/* ✅ Modo oscuro (venía en tu theme.css) */
+/* ✅ Modo oscuro*/
 .dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
@@ -79,8 +78,6 @@
   --sidebar-ring: oklch(0.439 0 0);
 }
 
-/* ✅ Alias que venían en @theme inline (Tailwind v4).
-   En Sass normal, solo definimos variables normales en :root. */
 :root {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -118,7 +115,6 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-/* ✅ Reemplazo de @layer base + @apply (Tailwind) por CSS normal */
 * {
   border-color: var(--border);
   outline-color: var(--ring);
@@ -129,7 +125,7 @@ body {
   color: var(--foreground);
 }
 
-/* Typography base (esto ya venía en tu theme.css y es CSS normal) */
+/* Typography base */
 html {
   font-size: var(--font-size);
 }

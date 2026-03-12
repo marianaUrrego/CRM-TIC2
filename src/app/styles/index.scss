@@ -1,6 +1,4 @@
-@use "./fonts";
 @use "./theme";
-
 
 /* Global base styles */
 * {
@@ -14,7 +12,7 @@ body {
   color: var(--foreground, #111);
 }
 
-/* Login page layout (para que NO se vea como en la captura) */
+/* Login page layout */
 .login-container {
   min-height: 100vh;
   display: flex;
