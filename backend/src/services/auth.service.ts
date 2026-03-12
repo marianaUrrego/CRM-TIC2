@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import { User, UserResponse, CreateUserRequest } from '../models/user.model';
+import { validatePassword, validateName, validateEmail } from '../utils/validation.util';
 
 export interface LoginRequest {
   email: string;
@@ -17,20 +18,26 @@ let users: User[] = [];
 
 export class AuthService {
   static async register(userData: CreateUserRequest): Promise<UserResponse> {
-    if (!userData.name || !userData.email || !userData.password) {
-      throw new Error('All fields are required');
+    // Validar nombre
+    const nameValidation = validateName(userData.name);
+    if (!nameValidation.isValid) {
+      throw new Error(nameValidation.message);
+    }
+
+    // Validar email
+    const emailValidation = validateEmail(userData.email);
+    if (!emailValidation.isValid) {
+      throw new Error(emailValidation.message);
+    }
+
+    // Validar contraseña
+    const passwordValidation = validatePassword(userData.password);
+    if (!passwordValidation.isValid) {
+      throw new Error(passwordValidation.message);
     }
 
     const normalizedEmail = userData.email.trim().toLowerCase();
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(normalizedEmail)) {
-      throw new Error('Invalid email format');
-    }
-
-    if (userData.password.length < 6) {
-      throw new Error('Password must be at least 6 characters long');
-    }
+    const normalizedPassword = userData.password;
 
     console.log('REGISTER - datos recibidos:', userData);
 
@@ -40,7 +47,7 @@ export class AuthService {
       throw new Error('User with this email already exists');
     }
 
-    const hashedPassword = await bcrypt.hash(userData.password, 10);
+    const hashedPassword = await bcrypt.hash(normalizedPassword, 10);
 
     const newUser: User = {
       id: uuidv4(),
@@ -62,16 +69,20 @@ export class AuthService {
   }
 
   static async login(loginData: LoginRequest): Promise<LoginResponse> {
-    if (!loginData.email || !loginData.password) {
-      throw new Error('Email and password are required');
+    // Validar email
+    const emailValidation = validateEmail(loginData.email);
+    if (!emailValidation.isValid) {
+      throw new Error(emailValidation.message);
+    }
+
+    // Validar formato de contraseña (antes de procesar)
+    const passwordValidation = validatePassword(loginData.password);
+    if (!passwordValidation.isValid) {
+      throw new Error(passwordValidation.message);
     }
 
     const normalizedEmail = loginData.email.trim().toLowerCase();
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(normalizedEmail)) {
-      throw new Error('Invalid email format');
-    }
+    const normalizedPassword = loginData.password;
 
     console.log('LOGIN - datos recibidos:', loginData);
     console.log('LOGIN - usuarios disponibles:', users);
@@ -83,7 +94,7 @@ export class AuthService {
       throw new Error('Invalid credentials');
     }
 
-    const isPasswordValid = await bcrypt.compare(loginData.password, user.password);
+    const isPasswordValid = await bcrypt.compare(normalizedPassword, user.password);
     console.log('LOGIN - password válido:', isPasswordValid);
 
     if (!isPasswordValid) {
