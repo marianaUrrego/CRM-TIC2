@@ -1,23 +1,47 @@
 import React, { useState } from "react";
 import { Building2, Lock, Mail } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { AuthService, type LoginData } from "../../services/auth.service";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
 
-    if (!email || !password) {
-      setError("Please fill in all fields");
-      return;
+    try {
+      // Validaciones del frontend
+      if (!email || !password) {
+        setError("Please fill in all fields");
+        return;
+      }
+
+      // Enviar datos al backend
+      const loginData: LoginData = { email, password };
+      const result = await AuthService.loginUser(loginData);
+      
+      console.log("Login successful:", result);
+      
+      // Guardar token y usuario en localStorage
+      if (result.token && result.user) {
+        AuthService.saveAuthData(result.token, result.user);
+        
+        // Redirigir al dashboard después del login exitoso
+        navigate("/dashboard");
+      }
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Login failed";
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
     }
-
-    console.log("Login attempt:", { email, password });
-    alert("Login successful! (demo)");
   };
 
   return (
@@ -75,8 +99,12 @@ export default function Login() {
 
               {error && <div className="error-message">{error}</div>}
 
-              <button type="submit" className="submit-button">
-                Sign In
+              <button 
+                type="submit" 
+                className="submit-button"
+                disabled={loading}
+              >
+                {loading ? "Signing In..." : "Sign In"}
               </button>
             </form>
 

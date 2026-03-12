@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Building2, Lock, Mail, User } from "lucide-react";
+import { AuthService, type RegisterData } from "../../services/auth.service";
 
 export default function Register() {
   const [name, setName] = useState("");
@@ -8,28 +9,46 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
 
-    if (!name || !email || !password || !confirmPassword) {
-      setError("Please fill in all fields");
-      return;
+    try {
+      // Validaciones del frontend
+      if (!name || !email || !password || !confirmPassword) {
+        setError("Please fill in all fields");
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        setError("Passwords do not match");
+        return;
+      }
+
+      if (password.length < 6) {
+        setError("Password must be at least 6 characters");
+        return;
+      }
+
+      // Enviar datos al backend
+      const registerData: RegisterData = { name, email, password };
+      const result = await AuthService.registerUser(registerData);
+      
+      console.log("Registration successful:", result);
+      
+      // Redirigir a login después del registro exitoso
+      navigate("/login");
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Registration failed";
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
     }
-
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
-
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
-      return;
-    }
-
-    console.log("Register (demo):", { name, email, password });
-    alert("Account created! (demo)");
   };
 
   return (
@@ -123,8 +142,12 @@ export default function Register() {
 
               {error && <div className="error-message">{error}</div>}
 
-              <button type="submit" className="submit-button">
-                Create Account
+              <button 
+                type="submit" 
+                className="submit-button"
+                disabled={loading}
+              >
+                {loading ? "Creating Account..." : "Create Account"}
               </button>
             </form>
 

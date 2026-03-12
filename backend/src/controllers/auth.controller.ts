@@ -19,4 +19,18 @@ export class AuthController {
       });
     }
   }
+
+  static async login(req: Request, res: Response): Promise<void> {
+    try {
+      const loginData = req.body;
+      const result = await AuthService.login(loginData);
+      
+      res.status(200).json(result);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Login failed';
+      res.status(400).json({
+        message: errorMessage
+      });
+    }
+  }
 }
