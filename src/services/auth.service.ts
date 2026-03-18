@@ -27,7 +27,7 @@ export interface ApiError {
 }
 
 // URL base del backend
-const API_URL = "http://localhost:5000/api/auth";
+const API_URL = "/api/auth";
 
 // Servicio de autenticación
 export class AuthService {
