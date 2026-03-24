@@ -36,7 +36,6 @@ export default function Header() {
 
   const handleEditProfile = () => {
     setIsMenuOpen(false);
-    navigate("/profile");
   };
 
   const handleLogout = () => {
