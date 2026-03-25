@@ -1,12 +1,18 @@
 html,
-body,
+body {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 #root {
   width: 100%;
   max-width: 100%;
-  height: 100%;
-  margin: 0;
-  overflow-x: hidden;
-  overflow-y: hidden;
+  min-height: 100vh;
 }
 
 * {
@@ -160,7 +166,7 @@ body,
 .crm-header__dropdown {
   position: absolute;
   top: calc(100% + 10px);
-  left: 12px;
+  right: 0;
   width: 170px;
   background: #ffffff;
   border: 1px solid #dddddd;
@@ -219,19 +225,16 @@ body,
 .page-shell {
   width: 100%;
   max-width: 100%;
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
 .page-content--blank {
   flex: 1;
   width: 100%;
   max-width: 100%;
-  min-height: 0;
   background: #ffffff;
-  overflow: hidden;
 }
 
 @media (max-width: 1024px) {
