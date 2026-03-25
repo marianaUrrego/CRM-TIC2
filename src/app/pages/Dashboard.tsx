@@ -1,121 +1,289 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Building2, Users, BarChart3, Settings, LogOut } from 'lucide-react';
-import { AuthService } from '../../services/auth.service';
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import Header from "../components/Header";
+import { AuthService } from "../../services/auth.service";
+
+// chart.js + react-chartjs-2
+import {
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip,
+  Legend,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  PointElement,
+  LineElement,
+  Filler
+} from "chart.js";
+import type { TooltipItem } from "chart.js";
+import { Doughnut, Bar, Line } from "react-chartjs-2";
+
+ChartJS.register(
+  ArcElement,
+  Tooltip,
+  Legend,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  PointElement,
+  LineElement,
+  Filler
+);
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { user } = AuthService.getAuthData();
 
   useEffect(() => {
-    // Verificar si hay datos de autenticación
     const { token } = AuthService.getAuthData();
+
     if (!token) {
-      navigate('/login');
+      navigate("/login");
     }
   }, [navigate]);
 
-  const handleLogout = () => {
-    AuthService.clearAuthData();
-    navigate('/login');
+  // ===== Datos quemados para las tarjetas y gráficos =====
+  const totalCustomers = 11;
+  const activeCustomers = 27;
+  const pendingReview = 65;
+  const inactiveCustomers = 47;
+
+  // Distribución por estado (para el pie, porcentajes como el diseño)
+  const statusDistributionData = {
+    labels: ["Active", "Pending", "Inactive"],
+    datasets: [
+      {
+        data: [63, 25, 13],
+        backgroundColor: ["#22c55e", "#f97316", "#6b7280"],
+        borderWidth: 0
+      }
+    ]
+  };
+
+  const pieOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    layout: {
+      padding: 10
+    },
+    plugins: {
+      legend: {
+        position: "bottom" as const,
+        labels: {
+          usePointStyle: true,
+          boxWidth: 10
+        }
+      },
+      tooltip: {
+        callbacks: {
+          label: (ctx: TooltipItem<'doughnut'>) => {
+            const label = ctx.label || "";
+            const value = ctx.parsed || 0;
+            return `${label}: ${value}%`;
+          }
+        }
+      }
+    }
+  };
+
+  // Nuevos clientes por mes (bar)
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
+  const newCustomersByMonth = [13, 15, 18, 22, 19, 25];
+
+  const newCustomersGrowthData = {
+    labels: months,
+    datasets: [
+      {
+        label: "New Customers",
+        data: newCustomersByMonth,
+        backgroundColor: "#3b82f6"
+      }
+    ]
+  };
+
+  const barOptions = {
+    plugins: {
+      legend: {
+        display: false
+      }
+    },
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      x: {
+        grid: { display: false }
+      },
+      y: {
+        beginAtZero: true,
+        grid: { color: "#e5e7eb" },
+        ticks: { stepSize: 7 },
+        suggestedMax: 28
+      }
+    }
+  };
+
+  // Tendencias por estado en 6 meses (área)
+  const customerTrendsOverTimeData = {
+    labels: months,
+    datasets: [
+      {
+        label: "Active",
+        data: [40, 45, 52, 60, 68, 10],
+        borderColor: "#22c55e",
+        backgroundColor: "rgba(34,197,94,0.35)",
+        fill: true,
+        tension: 0.4
+      },
+      {
+        label: "Pending",
+        data: [8, 9, 10, 11, 12, 3],
+        borderColor: "#f97316",
+        backgroundColor: "rgba(249,115,22,0.35)",
+        fill: true,
+        tension: 0.4
+      },
+      {
+        label: "Inactive",
+        data: [5, 6, 7, 8, 9, 2],
+        borderColor: "#6b7280",
+        backgroundColor: "rgba(107,114,128,0.35)",
+        fill: true,
+        tension: 0.4
+      }
+    ]
+  };
+
+  const lineOptions = {
+    plugins: {
+      legend: {
+        position: "bottom" as const,
+        labels: {
+          usePointStyle: true,
+          boxWidth: 8
+        }
+      }
+    },
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      x: {
+        grid: { color: "#e5e7eb" }
+      },
+      y: {
+        grid: { color: "#e5e7eb" }
+      }
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Building2 className="h-8 w-8 text-blue-600 mr-3" />
-              <h1 className="text-xl font-semibold text-gray-900">CRM Cloud</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">
-                Welcome, {user?.name}
-              </span>
-              <button
-                onClick={handleLogout}
-                className="flex items-center px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="dashboard-page">
+      {/* Header de tu app */}
+      <Header />
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
-            <p className="text-gray-600 mt-1">Welcome to your customer management system</p>
-          </div>
+      {/* Contenido principal del dashboard */}
+      <main className="dashboard-main">
+        {/* Título sección */}
+        <section className="dashboard-header">
+          <h2 className="dashboard-title">Analytics</h2>
+          <p className="dashboard-subtitle">
+            Overview of your customer performance and trends
+          </p>
+        </section>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
-              <div className="flex items-center">
-                <Users className="h-8 w-8 text-blue-600 mr-3" />
-                <div>
-                  <p className="text-sm text-gray-600">Total Customers</p>
-                  <p className="text-2xl font-semibold text-gray-900">0</p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
-              <div className="flex items-center">
-                <BarChart3 className="h-8 w-8 text-green-600 mr-3" />
-                <div>
-                  <p className="text-sm text-gray-600">Active Deals</p>
-                  <p className="text-2xl font-semibold text-gray-900">0</p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
-              <div className="flex items-center">
-                <Building2 className="h-8 w-8 text-purple-600 mr-3" />
-                <div>
-                  <p className="text-sm text-gray-600">Companies</p>
-                  <p className="text-2xl font-semibold text-gray-900">0</p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
-              <div className="flex items-center">
-                <Settings className="h-8 w-8 text-orange-600 mr-3" />
-                <div>
-                  <p className="text-sm text-gray-600">Settings</p>
-                  <p className="text-2xl font-semibold text-gray-900">•••</p>
-                </div>
-              </div>
-            </div>
-          </div>
+        {/* Tarjetas resumen */}
+        <section className="dashboard-cards">
+          <article className="dashboard-card">
+            <p className="dashboard-card-label">Total Customers</p>
+            <p className="dashboard-card-value">{totalCustomers}</p>
+            <p className="dashboard-card-helper dashboard-card-helper--success">
+              ↑ +12% from last month
+            </p>
+          </article>
 
-          {/* Quick Actions */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <button className="p-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-left">
-                <Users className="h-6 w-6 text-blue-600 mb-2" />
-                <p className="font-medium text-gray-900">Add Customer</p>
-                <p className="text-sm text-gray-600">Create a new customer profile</p>
-              </button>
-              <button className="p-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-left">
-                <Building2 className="h-6 w-6 text-green-600 mb-2" />
-                <p className="font-medium text-gray-900">Add Company</p>
-                <p className="text-sm text-gray-600">Register a new company</p>
-              </button>
-              <button className="p-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-left">
-                <BarChart3 className="h-6 w-6 text-purple-600 mb-2" />
-                <p className="font-medium text-gray-900">View Reports</p>
-                <p className="text-sm text-gray-600">Analytics and insights</p>
-              </button>
+          <article className="dashboard-card">
+            <p className="dashboard-card-label">Active Customers</p>
+            <p className="dashboard-card-value">{activeCustomers}</p>
+            <p className="dashboard-card-helper">
+              {((activeCustomers / totalCustomers) * 100).toFixed(1)}% of total
+            </p>
+          </article>
+
+          <article className="dashboard-card">
+            <p className="dashboard-card-label">Pending Review</p>
+            <p className="dashboard-card-value">{pendingReview}</p>
+            <p className="dashboard-card-helper dashboard-card-helper--warning">
+              Requires attention
+            </p>
+          </article>
+
+          <article className="dashboard-card">
+            <p className="dashboard-card-label">Inactive</p>
+            <p className="dashboard-card-value">{inactiveCustomers}</p>
+            <p className="dashboard-card-helper">
+              {((inactiveCustomers / totalCustomers) * 100).toFixed(1)}% of
+              total
+            </p>
+          </article>
+        </section>
+
+        {/* Fila de gráficos 1 */}
+        <section className="dashboard-grid-2">
+          <article className="dashboard-panel">
+            <header className="dashboard-panel-header">
+              <h3 className="dashboard-panel-title">
+                Customer Status Distribution
+              </h3>
+              <p className="dashboard-panel-subtitle">
+                Current distribution by status
+              </p>
+            </header>
+            <div className="dashboard-panel-body dashboard-panel-body--pie">
+              <div className="dashboard-pie-wrapper">
+                <Doughnut data={statusDistributionData} options={pieOptions} />
+              </div>
+              <div className="dashboard-status-labels">
+                <span className="status-label status-label--active">
+                  Active 63%
+                </span>
+                <span className="status-label status-label--pending">
+                  Pending 25%
+                </span>
+                <span className="status-label status-label--inactive">
+                  Inactive 13%
+                </span>
+              </div>
             </div>
-          </div>
-        </div>
+          </article>
+
+          <article className="dashboard-panel">
+            <header className="dashboard-panel-header">
+              <h3 className="dashboard-panel-title">New Customers Growth</h3>
+              <p className="dashboard-panel-subtitle">
+                Monthly new customer acquisitions
+              </p>
+            </header>
+            <div className="dashboard-panel-body">
+              <Bar data={newCustomersGrowthData} options={barOptions} />
+            </div>
+          </article>
+        </section>
+
+        {/* Fila de gráficos 2 */}
+        <section className="dashboard-row">
+          <article className="dashboard-panel">
+            <header className="dashboard-panel-header">
+              <h3 className="dashboard-panel-title">
+                Customer Trends Over Time
+              </h3>
+              <p className="dashboard-panel-subtitle">
+                6-month customer status trend analysis
+              </p>
+            </header>
+            <div className="dashboard-panel-body dashboard-panel-body--large">
+              <Line data={customerTrendsOverTimeData} options={lineOptions} />
+            </div>
+          </article>
+        </section>
       </main>
     </div>
   );

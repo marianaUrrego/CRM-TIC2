@@ -115,7 +115,7 @@ body {
 .form-input {
   width: 100%;
   padding: 10px 12px 10px 36px;
-  border: 1px solid rgba(0,0,0,.15);
+  border: 1px solid rgba(0, 0, 0, .15);
   border-radius: 10px;
   outline: none;
 }
@@ -155,4 +155,198 @@ body {
   text-align: center;
   font-size: 13px;
   opacity: 0.7;
+}
+
+/* === Dashboard Analytics === */
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow-y: auto;
+}
+
+.dashboard-page {
+  min-height: 100vh;
+  background-color: #f3f4f6; // gris claro
+}
+
+/* Contenedor principal debajo del Header */
+.dashboard-main {
+  max-width: 1120px;
+  margin: 24px auto 40px;
+  padding: 0 24px;
+  box-sizing: border-box;
+}
+
+/* Título y descripción */
+.dashboard-header {
+  margin-bottom: 24px;
+}
+
+.dashboard-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.dashboard-subtitle {
+  margin-top: 4px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+/* Tarjetas resumen */
+.dashboard-cards {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (min-width: 1024px) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.dashboard-card {
+  background-color: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  padding: 16px 20px;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
+}
+
+.dashboard-card-label {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.dashboard-card-value {
+  margin-top: 8px;
+  font-size: 26px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.dashboard-card-helper {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.dashboard-card-helper--success {
+  color: #16a34a;
+}
+
+.dashboard-card-helper--warning {
+  color: #ea580c;
+}
+
+/* Panels para gráficos */
+.dashboard-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+
+  @media (min-width: 1024px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.dashboard-row {
+  margin-bottom: 32px;
+}
+
+.dashboard-panel {
+  background-color: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  padding: 18px 20px 20px;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
+}
+
+.dashboard-panel-header {
+  margin-bottom: 12px;
+}
+
+.dashboard-panel-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.dashboard-panel-subtitle {
+  margin-top: 2px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+/* Alturas de los paneles */
+.dashboard-panel-body {
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.dashboard-panel-body--pie {
+  min-height: 260px;
+}
+
+.dashboard-panel-body--large {
+  min-height: 360px;
+}
+
+/* Contenedor del pie para que no sea gigante */
+.dashboard-pie-wrapper {
+  width: 220px;
+  height: 220px;
+  margin: 0 auto;
+}
+
+/* Etiquetas debajo del pie */
+.dashboard-status-labels {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.status-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.status-label::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.status-label--active::before {
+  background-color: #22c55e;
+}
+
+.status-label--pending::before {
+  background-color: #f97316;
+}
+
+.status-label--inactive::before {
+  background-color: #6b7280;
 }
