@@ -350,3 +350,238 @@ body {
 .status-label--inactive::before {
   background-color: #6b7280;
 }
+
+/* === Customers Page === */
+
+.customers-page {
+  min-height: 100vh;
+  background: #f3f4f6;
+}
+
+.customers-main {
+  max-width: 1440px;
+  margin: 28px auto 40px;
+  padding: 0 24px;
+  box-sizing: border-box;
+}
+
+.customers-panel {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 24px;
+  padding: 28px 30px 32px;
+}
+
+.customers-panel__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 26px;
+}
+
+.customers-panel__title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.customers-panel__subtitle {
+  margin: 4px 0 0;
+  font-size: 15px;
+  color: #64748b;
+}
+
+.customers-panel__add-btn {
+  height: 46px;
+  padding: 0 22px;
+  border: none;
+  border-radius: 14px;
+  background: #315cf0;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.customers-panel__add-btn:hover {
+  background: #2449d8;
+}
+
+.customers-search {
+  position: relative;
+  margin-bottom: 28px;
+}
+
+.customers-search__icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+}
+
+.customers-search input {
+  width: 100%;
+  height: 52px;
+  border: none;
+  outline: none;
+  border-radius: 14px;
+  background: #f3f4f6;
+  padding: 0 16px 0 52px;
+  color: #475569;
+  font-size: 15px;
+}
+
+.customers-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.customers-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.customers-table thead th {
+  text-align: left;
+  padding: 14px 10px 16px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.customers-table tbody td {
+  padding: 18px 10px;
+  font-size: 15px;
+  color: #475569;
+  border-bottom: 1px solid #eceff3;
+  vertical-align: middle;
+}
+
+.customers-table__empty {
+  text-align: center;
+  padding: 30px 10px;
+  color: #64748b;
+}
+
+.customers-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 3000;
+}
+
+.customers-modal {
+  width: 100%;
+  max-width: 520px;
+  background: #ffffff;
+  border-radius: 22px;
+  padding: 24px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
+}
+
+.customers-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.customers-modal__header h3 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.customers-modal__close {
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.customers-modal__form {
+  display: grid;
+  gap: 16px;
+}
+
+.customers-modal__field {
+  display: grid;
+  gap: 8px;
+}
+
+.customers-modal__field label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.customers-modal__field input,
+.customers-modal__field select {
+  height: 48px;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  padding: 0 12px;
+  font-size: 15px;
+  background: #ffffff;
+  outline: none;
+}
+
+.customers-modal__field input:focus,
+.customers-modal__field select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.customers-modal__submit {
+  height: 48px;
+  border: none;
+  border-radius: 12px;
+  background: #315cf0;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.customers-modal__submit:hover {
+  background: #2449d8;
+}
+
+@media (max-width: 900px) {
+  .customers-panel__top {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .customers-panel__add-btn {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 640px) {
+  .customers-main {
+    padding: 0 16px;
+  }
+
+  .customers-panel {
+    padding: 20px;
+    border-radius: 18px;
+  }
+
+  .customers-panel__title {
+    font-size: 18px;
+  }
+}

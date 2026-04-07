@@ -1,9 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import { AuthService } from "../../services/auth.service";
 
-// chart.js + react-chartjs-2
 import {
   Chart as ChartJS,
   ArcElement,
@@ -31,29 +30,96 @@ ChartJS.register(
   Filler
 );
 
+type CustomerStatus = "Active" | "Pending" | "Inactive";
+
+type Customer = {
+  id: string;
+  owner_user_id: string;
+  full_name: string;
+  email: string;
+  phone_number: string;
+  company: string;
+  status: CustomerStatus;
+  country: string;
+  address: string;
+  created_at: string;
+  updated_at: string;
+};
+
+const API_URL = `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api`;
+
 export default function Dashboard() {
   const navigate = useNavigate();
+
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const { token } = AuthService.getAuthData();
 
     if (!token) {
       navigate("/login");
+      return;
     }
+
+    fetchCustomers(token);
   }, [navigate]);
 
-  // ===== Datos quemados para las tarjetas y gráficos =====
-  const totalCustomers = 11;
-  const activeCustomers = 27;
-  const pendingReview = 65;
-  const inactiveCustomers = 47;
+  const fetchCustomers = async (token: string) => {
+    try {
+      setLoading(true);
 
-  // Distribución por estado (para el pie, porcentajes como el diseño)
+      const response = await fetch(`${API_URL}/customers`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.status === 401) {
+        navigate("/login");
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch customers");
+      }
+
+      const data: Customer[] = await response.json();
+      setCustomers(data);
+    } catch (error) {
+      console.error("Error loading dashboard customers:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const stats = useMemo(() => {
+    const totalCustomers = customers.length;
+    const activeCustomers = customers.filter((c) => c.status === "Active").length;
+    const pendingCustomers = customers.filter((c) => c.status === "Pending").length;
+    const inactiveCustomers = customers.filter((c) => c.status === "Inactive").length;
+
+    return {
+      totalCustomers,
+      activeCustomers,
+      pendingCustomers,
+      inactiveCustomers,
+    };
+  }, [customers]);
+
+  const percentage = (value: number, total: number) =>
+    total === 0 ? 0 : Number(((value / total) * 100).toFixed(1));
+
   const statusDistributionData = {
     labels: ["Active", "Pending", "Inactive"],
     datasets: [
       {
-        data: [63, 25, 13],
+        data: [
+          stats.activeCustomers,
+          stats.pendingCustomers,
+          stats.inactiveCustomers,
+        ],
         backgroundColor: ["#22c55e", "#f97316", "#6b7280"],
         borderWidth: 0
       }
@@ -76,26 +142,46 @@ export default function Dashboard() {
       },
       tooltip: {
         callbacks: {
-          label: (ctx: TooltipItem<'doughnut'>) => {
+          label: (ctx: TooltipItem<"doughnut">) => {
             const label = ctx.label || "";
-            const value = ctx.parsed || 0;
-            return `${label}: ${value}%`;
+            const value = Number(ctx.parsed || 0);
+            const total = stats.totalCustomers || 1;
+            const pct = ((value / total) * 100).toFixed(1);
+            return `${label}: ${value} (${pct}%)`;
           }
         }
       }
     }
   };
 
-  // Nuevos clientes por mes (bar)
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
-  const newCustomersByMonth = [13, 15, 18, 22, 19, 25];
+
+  const groupedByMonth = useMemo(() => {
+    const result = [0, 0, 0, 0, 0, 0];
+    const now = new Date();
+
+    customers.forEach((customer) => {
+      const createdAt = new Date(customer.created_at);
+
+      const diffMonths =
+        (now.getFullYear() - createdAt.getFullYear()) * 12 +
+        (now.getMonth() - createdAt.getMonth());
+
+      if (diffMonths >= 0 && diffMonths < 6) {
+        const index = 5 - diffMonths;
+        result[index] += 1;
+      }
+    });
+
+    return result;
+  }, [customers]);
 
   const newCustomersGrowthData = {
     labels: months,
     datasets: [
       {
         label: "New Customers",
-        data: newCustomersByMonth,
+        data: groupedByMonth,
         backgroundColor: "#3b82f6"
       }
     ]
@@ -116,42 +202,63 @@ export default function Dashboard() {
       y: {
         beginAtZero: true,
         grid: { color: "#e5e7eb" },
-        ticks: { stepSize: 7 },
-        suggestedMax: 28
+        ticks: { stepSize: 1 }
       }
     }
   };
 
-  // Tendencias por estado en 6 meses (área)
-  const customerTrendsOverTimeData = {
-    labels: months,
-    datasets: [
-      {
-        label: "Active",
-        data: [40, 45, 52, 60, 68, 10],
-        borderColor: "#22c55e",
-        backgroundColor: "rgba(34,197,94,0.35)",
-        fill: true,
-        tension: 0.4
-      },
-      {
-        label: "Pending",
-        data: [8, 9, 10, 11, 12, 3],
-        borderColor: "#f97316",
-        backgroundColor: "rgba(249,115,22,0.35)",
-        fill: true,
-        tension: 0.4
-      },
-      {
-        label: "Inactive",
-        data: [5, 6, 7, 8, 9, 2],
-        borderColor: "#6b7280",
-        backgroundColor: "rgba(107,114,128,0.35)",
-        fill: true,
-        tension: 0.4
+  const customerTrendsOverTimeData = useMemo(() => {
+    const active = [0, 0, 0, 0, 0, 0];
+    const pending = [0, 0, 0, 0, 0, 0];
+    const inactive = [0, 0, 0, 0, 0, 0];
+    const now = new Date();
+
+    customers.forEach((customer) => {
+      const createdAt = new Date(customer.created_at);
+
+      const diffMonths =
+        (now.getFullYear() - createdAt.getFullYear()) * 12 +
+        (now.getMonth() - createdAt.getMonth());
+
+      if (diffMonths >= 0 && diffMonths < 6) {
+        const index = 5 - diffMonths;
+
+        if (customer.status === "Active") active[index] += 1;
+        if (customer.status === "Pending") pending[index] += 1;
+        if (customer.status === "Inactive") inactive[index] += 1;
       }
-    ]
-  };
+    });
+
+    return {
+      labels: months,
+      datasets: [
+        {
+          label: "Active",
+          data: active,
+          borderColor: "#22c55e",
+          backgroundColor: "rgba(34,197,94,0.35)",
+          fill: true,
+          tension: 0.4
+        },
+        {
+          label: "Pending",
+          data: pending,
+          borderColor: "#f97316",
+          backgroundColor: "rgba(249,115,22,0.35)",
+          fill: true,
+          tension: 0.4
+        },
+        {
+          label: "Inactive",
+          data: inactive,
+          borderColor: "#6b7280",
+          backgroundColor: "rgba(107,114,128,0.35)",
+          fill: true,
+          tension: 0.4
+        }
+      ]
+    };
+  }, [customers]);
 
   const lineOptions = {
     plugins: {
@@ -170,6 +277,7 @@ export default function Dashboard() {
         grid: { color: "#e5e7eb" }
       },
       y: {
+        beginAtZero: true,
         grid: { color: "#e5e7eb" }
       }
     }
@@ -177,12 +285,9 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard-page">
-      {/* Header de tu app */}
       <Header />
 
-      {/* Contenido principal del dashboard */}
       <main className="dashboard-main">
-        {/* Título sección */}
         <section className="dashboard-header">
           <h2 className="dashboard-title">Analytics</h2>
           <p className="dashboard-subtitle">
@@ -190,43 +295,48 @@ export default function Dashboard() {
           </p>
         </section>
 
-        {/* Tarjetas resumen */}
         <section className="dashboard-cards">
           <article className="dashboard-card">
             <p className="dashboard-card-label">Total Customers</p>
-            <p className="dashboard-card-value">{totalCustomers}</p>
+            <p className="dashboard-card-value">
+              {loading ? "..." : stats.totalCustomers}
+            </p>
             <p className="dashboard-card-helper dashboard-card-helper--success">
-              ↑ +12% from last month
+              Real data from database
             </p>
           </article>
 
           <article className="dashboard-card">
             <p className="dashboard-card-label">Active Customers</p>
-            <p className="dashboard-card-value">{activeCustomers}</p>
+            <p className="dashboard-card-value">
+              {loading ? "..." : stats.activeCustomers}
+            </p>
             <p className="dashboard-card-helper">
-              {((activeCustomers / totalCustomers) * 100).toFixed(1)}% of total
+              {percentage(stats.activeCustomers, stats.totalCustomers)}% of total
             </p>
           </article>
 
           <article className="dashboard-card">
             <p className="dashboard-card-label">Pending Review</p>
-            <p className="dashboard-card-value">{pendingReview}</p>
+            <p className="dashboard-card-value">
+              {loading ? "..." : stats.pendingCustomers}
+            </p>
             <p className="dashboard-card-helper dashboard-card-helper--warning">
-              Requires attention
+              {percentage(stats.pendingCustomers, stats.totalCustomers)}% of total
             </p>
           </article>
 
           <article className="dashboard-card">
             <p className="dashboard-card-label">Inactive</p>
-            <p className="dashboard-card-value">{inactiveCustomers}</p>
+            <p className="dashboard-card-value">
+              {loading ? "..." : stats.inactiveCustomers}
+            </p>
             <p className="dashboard-card-helper">
-              {((inactiveCustomers / totalCustomers) * 100).toFixed(1)}% of
-              total
+              {percentage(stats.inactiveCustomers, stats.totalCustomers)}% of total
             </p>
           </article>
         </section>
 
-        {/* Fila de gráficos 1 */}
         <section className="dashboard-grid-2">
           <article className="dashboard-panel">
             <header className="dashboard-panel-header">
@@ -243,13 +353,13 @@ export default function Dashboard() {
               </div>
               <div className="dashboard-status-labels">
                 <span className="status-label status-label--active">
-                  Active 63%
+                  Active {percentage(stats.activeCustomers, stats.totalCustomers)}%
                 </span>
                 <span className="status-label status-label--pending">
-                  Pending 25%
+                  Pending {percentage(stats.pendingCustomers, stats.totalCustomers)}%
                 </span>
                 <span className="status-label status-label--inactive">
-                  Inactive 13%
+                  Inactive {percentage(stats.inactiveCustomers, stats.totalCustomers)}%
                 </span>
               </div>
             </div>
@@ -268,7 +378,6 @@ export default function Dashboard() {
           </article>
         </section>
 
-        {/* Fila de gráficos 2 */}
         <section className="dashboard-row">
           <article className="dashboard-panel">
             <header className="dashboard-panel-header">
