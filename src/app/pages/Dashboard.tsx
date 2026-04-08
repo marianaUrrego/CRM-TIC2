@@ -54,20 +54,15 @@ export default function Dashboard() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const { token } = AuthService.getAuthData();
-
-    if (!token) {
-      navigate("/login");
-      return;
-    }
-
-    fetchCustomers(token);
-  }, [navigate]);
-
-  const fetchCustomers = async (token: string) => {
+  const fetchCustomers = async (tokenParam?: string) => {
     try {
-      setLoading(true);
+      const { token: storedToken } = AuthService.getAuthData();
+      const token = tokenParam || storedToken;
+
+      if (!token) {
+        navigate("/login");
+        return;
+      }
 
       const response = await fetch(`${API_URL}/customers`, {
         method: "GET",
@@ -94,17 +89,29 @@ export default function Dashboard() {
     }
   };
 
+  useEffect(() => {
+    const { token } = AuthService.getAuthData();
+
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
+    setLoading(true);
+    fetchCustomers(token);
+
+    const interval = setInterval(() => {
+      fetchCustomers(token);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [navigate]);
+
   const stats = useMemo(() => {
     const totalCustomers = customers.length;
-    const activeCustomers = customers.filter(
-      (customer) => customer.status === "active"
-    ).length;
-    const pendingCustomers = customers.filter(
-      (customer) => customer.status === "pending"
-    ).length;
-    const inactiveCustomers = customers.filter(
-      (customer) => customer.status === "inactive"
-    ).length;
+    const activeCustomers = customers.filter((c) => c.status === "active").length;
+    const pendingCustomers = customers.filter((c) => c.status === "pending").length;
+    const inactiveCustomers = customers.filter((c) => c.status === "inactive").length;
 
     return {
       totalCustomers,
@@ -114,10 +121,8 @@ export default function Dashboard() {
     };
   }, [customers]);
 
-  const percentage = (value: number, total: number) => {
-    if (total === 0) return 0;
-    return Number(((value / total) * 100).toFixed(1));
-  };
+  const percentage = (value: number, total: number) =>
+    total === 0 ? 0 : Number(((value / total) * 100).toFixed(1));
 
   const statusDistributionData = {
     labels: ["Active", "Pending", "Inactive"],
@@ -137,9 +142,7 @@ export default function Dashboard() {
   const pieOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    layout: {
-      padding: 10,
-    },
+    layout: { padding: 10 },
     plugins: {
       legend: {
         position: "bottom" as const,
@@ -207,9 +210,7 @@ export default function Dashboard() {
 
   const barOptions = {
     plugins: {
-      legend: {
-        display: false,
-      },
+      legend: { display: false },
     },
     responsive: true,
     maintainAspectRatio: false,

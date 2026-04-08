@@ -88,8 +88,6 @@ export default function Customers() {
   const [search, setSearch] = useState("");
   const [form, setForm] = useState<CustomerFormState>(initialForm);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
-  const [isCountryOpen, setIsCountryOpen] = useState(false);
-const [countrySearch, setCountrySearch] = useState("");
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,60 +98,9 @@ const [countrySearch, setCountrySearch] = useState("");
   const [openStatusMenuId, setOpenStatusMenuId] = useState<string | null>(null);
 
   const actionsRef = useRef<HTMLDivElement | null>(null);
-  const countryDropdownRef = useRef<HTMLDivElement | null>(null);
-
-useEffect(() => {
-  const handleClickOutside = (event: MouseEvent) => {
-    if (
-      countryDropdownRef.current &&
-      !countryDropdownRef.current.contains(event.target as Node)
-    ) {
-      setIsCountryOpen(false);
-    }
-  };
-
-  document.addEventListener("mousedown", handleClickOutside);
-  return () => document.removeEventListener("mousedown", handleClickOutside);
-}, []);
-const filteredCountries = useMemo(() => {
-  const term = countrySearch.trim().toLowerCase();
-
-  if (!term) return countries;
-
-  return countries.filter((country) =>
-    country.toLowerCase().includes(term)
-  );
-}, [countrySearch]);
-
-  useEffect(() => {
-    const { token } = AuthService.getAuthData();
-
-    if (!token) {
-      navigate("/login");
-      return;
-    }
-
-    fetchCustomers(token);
-  }, [navigate]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        actionsRef.current &&
-        !actionsRef.current.contains(event.target as Node)
-      ) {
-        setOpenMenuId(null);
-        setOpenStatusMenuId(null);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   const fetchCustomers = async (tokenParam?: string) => {
     try {
-      setLoading(true);
       setError("");
 
       const { token: storedToken } = AuthService.getAuthData();
@@ -190,6 +137,39 @@ const filteredCountries = useMemo(() => {
     }
   };
 
+  useEffect(() => {
+    const { token } = AuthService.getAuthData();
+
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
+    setLoading(true);
+    fetchCustomers(token);
+
+    const interval = setInterval(() => {
+      fetchCustomers(token);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [navigate]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        actionsRef.current &&
+        !actionsRef.current.contains(event.target as Node)
+      ) {
+        setOpenMenuId(null);
+        setOpenStatusMenuId(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const validateField = (
     name: keyof CustomerFormState,
     value: string
@@ -217,12 +197,8 @@ const filteredCountries = useMemo(() => {
         if (!/^\d+$/.test(trimmedValue)) {
           return "Phone number can only contain numbers.";
         }
-        if (trimmedValue.length < 7) {
-          return "Phone number must have at least 7 digits.";
-        }
-        if (trimmedValue.length > 15) {
-          return "Phone number cannot exceed 15 digits.";
-        }
+        if (trimmedValue.length < 7) return "Phone number must have at least 7 digits.";
+        if (trimmedValue.length > 15) return "Phone number cannot exceed 15 digits.";
         return "";
 
       case "company":
@@ -230,12 +206,24 @@ const filteredCountries = useMemo(() => {
         if (trimmedValue.length < 2) return "Company must have at least 2 characters.";
         return "";
 
-      case "country":
+      case "country": {
         if (!trimmedValue) return "Country is required.";
+
         if (!/^[A-Za-zÁÉÍÓÚáéíóúÑñÜü\s]+$/.test(trimmedValue)) {
           return "Country can only contain letters and spaces.";
         }
+
+        const normalizedInput = trimmedValue.toLowerCase();
+        const isValidCountry = countries.some(
+          (country) => country.toLowerCase() === normalizedInput
+        );
+
+        if (!isValidCountry) {
+          return "Please enter a valid country from the allowed list.";
+        }
+
         return "";
+      }
 
       case "address":
         if (!trimmedValue) return "Address is required.";
@@ -267,7 +255,6 @@ const filteredCountries = useMemo(() => {
     ) as FormErrors;
 
     setFormErrors(cleanedErrors);
-
     return Object.keys(cleanedErrors).length === 0;
   };
 
@@ -297,22 +284,18 @@ const filteredCountries = useMemo(() => {
     }));
   };
 
-const handleOpenModal = () => {
-  setForm(initialForm);
-  setFormErrors({});
-  setCountrySearch("");
-  setIsCountryOpen(false);
-  setError("");
-  setIsModalOpen(true);
-};
+  const handleOpenModal = () => {
+    setForm(initialForm);
+    setFormErrors({});
+    setError("");
+    setIsModalOpen(true);
+  };
 
-const handleCloseModal = () => {
-  setIsModalOpen(false);
-  setForm(initialForm);
-  setFormErrors({});
-  setCountrySearch("");
-  setIsCountryOpen(false);
-};
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setForm(initialForm);
+    setFormErrors({});
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -330,6 +313,11 @@ const handleCloseModal = () => {
         return;
       }
 
+      const matchedCountry =
+        countries.find(
+          (country) => country.toLowerCase() === form.country.trim().toLowerCase()
+        ) || form.country.trim();
+
       const response = await fetch(`${API_URL}/customers`, {
         method: "POST",
         headers: {
@@ -341,7 +329,7 @@ const handleCloseModal = () => {
           full_name: form.full_name.trim(),
           email: form.email.trim().toLowerCase(),
           company: form.company.trim(),
-          country: form.country.trim(),
+          country: matchedCountry,
           address: form.address.trim(),
         }),
       });
@@ -356,9 +344,8 @@ const handleCloseModal = () => {
         throw new Error(errorData?.message || "Failed to create customer");
       }
 
-      const newCustomer: Customer = await response.json();
-      setCustomers((prev) => [newCustomer, ...prev]);
       handleCloseModal();
+      await fetchCustomers();
     } catch (err) {
       console.error("Error creating customer:", err);
       setError("Could not save customer.");
@@ -395,9 +382,9 @@ const handleCloseModal = () => {
         throw new Error("Failed to delete customer");
       }
 
-      setCustomers((prev) => prev.filter((customer) => customer.id !== id));
       setOpenMenuId(null);
       setOpenStatusMenuId(null);
+      await fetchCustomers();
     } catch (err) {
       console.error("Error deleting customer:", err);
       setError("Could not delete customer.");
@@ -431,16 +418,9 @@ const handleCloseModal = () => {
         throw new Error("Failed to update customer status");
       }
 
-      const updatedCustomer: Customer = await response.json();
-
-      setCustomers((prev) =>
-        prev.map((customer) =>
-          customer.id === updatedCustomer.id ? updatedCustomer : customer
-        )
-      );
-
       setOpenMenuId(null);
       setOpenStatusMenuId(null);
+      await fetchCustomers();
     } catch (err) {
       console.error("Error updating customer status:", err);
       setError("Could not update customer status.");
@@ -666,7 +646,10 @@ const handleCloseModal = () => {
               </button>
             </div>
 
-            <form className="customers-modal__form customers-modal__form--grid" onSubmit={handleSubmit}>
+            <form
+              className="customers-modal__form customers-modal__form--grid"
+              onSubmit={handleSubmit}
+            >
               <div className="customers-modal__field">
                 <label htmlFor="full_name">Full Name *</label>
                 <input
@@ -747,86 +730,21 @@ const handleCloseModal = () => {
                 </select>
               </div>
 
-<div className="customers-modal__field">
-  <label htmlFor="country">Country *</label>
-
-  <div className="customers-country" ref={countryDropdownRef}>
-    <button
-      type="button"
-      className={`customers-country__trigger ${
-        isCountryOpen ? "customers-country__trigger--open" : ""
-      }`}
-      onClick={() => {
-        setIsCountryOpen((prev) => !prev);
-        setCountrySearch(form.country || "");
-      }}
-    >
-      <span className={form.country ? "" : "customers-country__placeholder"}>
-        {form.country || "Search country..."}
-      </span>
-      <span className="customers-country__arrow">▾</span>
-    </button>
-
-    {isCountryOpen && (
-      <div className="customers-country__dropdown">
-        <div className="customers-country__search-wrap">
-          <input
-            type="text"
-            className="customers-country__search"
-            placeholder="Search country..."
-            value={countrySearch}
-            onChange={(event) => {
-              const value = event.target.value.replace(
-                /[^A-Za-zÁÉÍÓÚáéíóúÑñÜü\s]/g,
-                ""
-              );
-              setCountrySearch(value);
-            }}
-            autoFocus
-          />
-        </div>
-
-        <div className="customers-country__list">
-          {filteredCountries.length > 0 ? (
-            filteredCountries.map((country) => (
-              <button
-                key={country}
-                type="button"
-                className={`customers-country__option ${
-                  form.country === country
-                    ? "customers-country__option--selected"
-                    : ""
-                }`}
-                onClick={() => {
-                  setForm((prev) => ({
-                    ...prev,
-                    country,
-                  }));
-
-                  setFormErrors((prev) => ({
-                    ...prev,
-                    country: validateField("country", country),
-                  }));
-
-                  setCountrySearch(country);
-                  setIsCountryOpen(false);
-                }}
-              >
-                {country}
-              </button>
-            ))
-          ) : (
-            <div className="customers-country__empty">No countries found.</div>
-          )}
-        </div>
-      </div>
-    )}
-  </div>
-
-  {formErrors.country && (
-    <span className="customers-field-error">{formErrors.country}</span>
-  )}
-</div>
+              <div className="customers-modal__field">
+                <label htmlFor="country">Country *</label>
+                <input
+                  id="country"
+                  name="country"
+                  type="text"
+                  placeholder="Enter country"
+                  value={form.country}
+                  onChange={handleInputChange}
+                  required
+                />
+                {formErrors.country && (
+                  <span className="customers-field-error">{formErrors.country}</span>
+                )}
+              </div>
 
               <div className="customers-modal__field customers-modal__field--full">
                 <label htmlFor="address">Address *</label>
