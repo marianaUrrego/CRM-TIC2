@@ -2,13 +2,17 @@ import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 
 type JwtPayload = {
-  id: string;
+  sub: string;
   email?: string;
   name?: string;
 };
 
 export type AuthRequest = Request & {
-  user?: JwtPayload;
+  user?: {
+    id: string;
+    email?: string;
+    name?: string;
+  };
 };
 
 export function authMiddleware(
@@ -30,7 +34,12 @@ export function authMiddleware(
       process.env.JWT_SECRET as string
     ) as JwtPayload;
 
-    req.user = decoded;
+    req.user = {
+      id: decoded.sub,
+      email: decoded.email,
+      name: decoded.name,
+    };
+
     next();
   } catch (error) {
     return res.status(401).json({ message: "Invalid token" });

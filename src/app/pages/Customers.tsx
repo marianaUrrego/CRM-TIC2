@@ -1,10 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
-import { Plus, Search, MoreVertical, X, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Plus,
+  Search,
+  X,
+  MoreVertical,
+  Eye,
+  Pencil,
+  CircleAlert,
+  CheckCircle2,
+  Clock3,
+  XCircle,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import { AuthService } from "../../services/auth.service";
 
-type CustomerStatus = "Active" | "Pending" | "Inactive";
+type CustomerStatus = "active" | "pending" | "inactive";
 
 type Customer = {
   id: string;
@@ -30,6 +41,8 @@ type CustomerFormState = {
   address: string;
 };
 
+type FormErrors = Partial<Record<keyof CustomerFormState, string>>;
+
 const API_URL = `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api`;
 
 const initialForm: CustomerFormState = {
@@ -37,10 +50,36 @@ const initialForm: CustomerFormState = {
   email: "",
   phone_number: "",
   company: "",
-  status: "Active",
+  status: "active",
   country: "",
   address: "",
 };
+
+const countries = [
+  "Argentina",
+  "Australia",
+  "Brazil",
+  "Canada",
+  "Chile",
+  "China",
+  "Colombia",
+  "Costa Rica",
+  "Ecuador",
+  "France",
+  "Germany",
+  "India",
+  "Italy",
+  "Japan",
+  "Mexico",
+  "Panama",
+  "Peru",
+  "Portugal",
+  "Spain",
+  "United Kingdom",
+  "United States",
+  "Uruguay",
+  "Venezuela",
+];
 
 export default function Customers() {
   const navigate = useNavigate();
@@ -48,11 +87,43 @@ export default function Customers() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [form, setForm] = useState<CustomerFormState>(initialForm);
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [isCountryOpen, setIsCountryOpen] = useState(false);
+const [countrySearch, setCountrySearch] = useState("");
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [openStatusMenuId, setOpenStatusMenuId] = useState<string | null>(null);
+
+  const actionsRef = useRef<HTMLDivElement | null>(null);
+  const countryDropdownRef = useRef<HTMLDivElement | null>(null);
+
+useEffect(() => {
+  const handleClickOutside = (event: MouseEvent) => {
+    if (
+      countryDropdownRef.current &&
+      !countryDropdownRef.current.contains(event.target as Node)
+    ) {
+      setIsCountryOpen(false);
+    }
+  };
+
+  document.addEventListener("mousedown", handleClickOutside);
+  return () => document.removeEventListener("mousedown", handleClickOutside);
+}, []);
+const filteredCountries = useMemo(() => {
+  const term = countrySearch.trim().toLowerCase();
+
+  if (!term) return countries;
+
+  return countries.filter((country) =>
+    country.toLowerCase().includes(term)
+  );
+}, [countrySearch]);
 
   useEffect(() => {
     const { token } = AuthService.getAuthData();
@@ -64,6 +135,21 @@ export default function Customers() {
 
     fetchCustomers(token);
   }, [navigate]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        actionsRef.current &&
+        !actionsRef.current.contains(event.target as Node)
+      ) {
+        setOpenMenuId(null);
+        setOpenStatusMenuId(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const fetchCustomers = async (tokenParam?: string) => {
     try {
@@ -104,30 +190,134 @@ export default function Customers() {
     }
   };
 
+  const validateField = (
+    name: keyof CustomerFormState,
+    value: string
+  ): string => {
+    const trimmedValue = value.trim();
+
+    switch (name) {
+      case "full_name":
+        if (!trimmedValue) return "Full name is required.";
+        if (trimmedValue.length < 3) return "Full name must have at least 3 characters.";
+        if (!/^[A-Za-zÁÉÍÓÚáéíóúÑñÜü\s]+$/.test(trimmedValue)) {
+          return "Full name can only contain letters and spaces.";
+        }
+        return "";
+
+      case "email":
+        if (!trimmedValue) return "Email is required.";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedValue)) {
+          return "Enter a valid email address.";
+        }
+        return "";
+
+      case "phone_number":
+        if (!trimmedValue) return "Phone number is required.";
+        if (!/^\d+$/.test(trimmedValue)) {
+          return "Phone number can only contain numbers.";
+        }
+        if (trimmedValue.length < 7) {
+          return "Phone number must have at least 7 digits.";
+        }
+        if (trimmedValue.length > 15) {
+          return "Phone number cannot exceed 15 digits.";
+        }
+        return "";
+
+      case "company":
+        if (!trimmedValue) return "Company is required.";
+        if (trimmedValue.length < 2) return "Company must have at least 2 characters.";
+        return "";
+
+      case "country":
+        if (!trimmedValue) return "Country is required.";
+        if (!/^[A-Za-zÁÉÍÓÚáéíóúÑñÜü\s]+$/.test(trimmedValue)) {
+          return "Country can only contain letters and spaces.";
+        }
+        return "";
+
+      case "address":
+        if (!trimmedValue) return "Address is required.";
+        if (trimmedValue.length < 5) return "Address must have at least 5 characters.";
+        return "";
+
+      case "status":
+        if (!trimmedValue) return "Status is required.";
+        return "";
+
+      default:
+        return "";
+    }
+  };
+
+  const validateForm = () => {
+    const errors: FormErrors = {
+      full_name: validateField("full_name", form.full_name),
+      email: validateField("email", form.email),
+      phone_number: validateField("phone_number", form.phone_number),
+      company: validateField("company", form.company),
+      status: validateField("status", form.status),
+      country: validateField("country", form.country),
+      address: validateField("address", form.address),
+    };
+
+    const cleanedErrors = Object.fromEntries(
+      Object.entries(errors).filter(([, value]) => value)
+    ) as FormErrors;
+
+    setFormErrors(cleanedErrors);
+
+    return Object.keys(cleanedErrors).length === 0;
+  };
+
   const handleInputChange = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = event.target;
 
+    let nextValue = value;
+
+    if (name === "full_name" || name === "country") {
+      nextValue = value.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñÜü\s]/g, "");
+    }
+
+    if (name === "phone_number") {
+      nextValue = value.replace(/\D/g, "").slice(0, 15);
+    }
+
     setForm((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: nextValue,
+    }));
+
+    setFormErrors((prev) => ({
+      ...prev,
+      [name]: validateField(name as keyof CustomerFormState, nextValue),
     }));
   };
 
-  const handleOpenModal = () => {
-    setForm(initialForm);
-    setError("");
-    setIsModalOpen(true);
-  };
+const handleOpenModal = () => {
+  setForm(initialForm);
+  setFormErrors({});
+  setCountrySearch("");
+  setIsCountryOpen(false);
+  setError("");
+  setIsModalOpen(true);
+};
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setForm(initialForm);
-  };
+const handleCloseModal = () => {
+  setIsModalOpen(false);
+  setForm(initialForm);
+  setFormErrors({});
+  setCountrySearch("");
+  setIsCountryOpen(false);
+};
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (!validateForm()) return;
 
     try {
       setSaving(true);
@@ -146,7 +336,14 @@ export default function Customers() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          full_name: form.full_name.trim(),
+          email: form.email.trim().toLowerCase(),
+          company: form.company.trim(),
+          country: form.country.trim(),
+          address: form.address.trim(),
+        }),
       });
 
       if (response.status === 401) {
@@ -160,7 +357,6 @@ export default function Customers() {
       }
 
       const newCustomer: Customer = await response.json();
-
       setCustomers((prev) => [newCustomer, ...prev]);
       handleCloseModal();
     } catch (err) {
@@ -176,8 +372,6 @@ export default function Customers() {
     if (!confirmed) return;
 
     try {
-      setError("");
-
       const { token } = AuthService.getAuthData();
 
       if (!token) {
@@ -202,6 +396,8 @@ export default function Customers() {
       }
 
       setCustomers((prev) => prev.filter((customer) => customer.id !== id));
+      setOpenMenuId(null);
+      setOpenStatusMenuId(null);
     } catch (err) {
       console.error("Error deleting customer:", err);
       setError("Could not delete customer.");
@@ -210,8 +406,6 @@ export default function Customers() {
 
   const handleStatusChange = async (id: string, status: CustomerStatus) => {
     try {
-      setError("");
-
       const { token } = AuthService.getAuthData();
 
       if (!token) {
@@ -244,6 +438,9 @@ export default function Customers() {
           customer.id === updatedCustomer.id ? updatedCustomer : customer
         )
       );
+
+      setOpenMenuId(null);
+      setOpenStatusMenuId(null);
     } catch (err) {
       console.error("Error updating customer status:", err);
       setError("Could not update customer status.");
@@ -264,6 +461,12 @@ export default function Customers() {
     });
   }, [customers, search]);
 
+  const getStatusLabel = (status: CustomerStatus) => {
+    if (status === "active") return "Active";
+    if (status === "pending") return "Pending";
+    return "Inactive";
+  };
+
   return (
     <div className="customers-page">
       <Header />
@@ -283,7 +486,7 @@ export default function Customers() {
               className="customers-panel__add-btn"
               onClick={handleOpenModal}
             >
-              <Plus size={20} />
+              <Plus size={18} />
               <span>Add Customer</span>
             </button>
           </div>
@@ -322,49 +525,114 @@ export default function Customers() {
                 ) : filteredCustomers.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="customers-table__empty">
-                      No customers found.
+                      No customers yet.
                     </td>
                   </tr>
                 ) : (
                   filteredCustomers.map((customer) => (
                     <tr key={customer.id}>
-                      <td>{customer.full_name}</td>
+                      <td className="customers-table__name">{customer.full_name}</td>
                       <td>{customer.email}</td>
                       <td>{customer.company}</td>
                       <td>
-                        <select
-                          value={customer.status}
-                          onChange={(e) =>
-                            handleStatusChange(
-                              customer.id,
-                              e.target.value as CustomerStatus
-                            )
-                          }
-                          className={`customers-status customers-status--${customer.status.toLowerCase()}`}
+                        <span
+                          className={`customers-status-badge customers-status-badge--${customer.status}`}
                         >
-                          <option value="Active">Active</option>
-                          <option value="Pending">Pending</option>
-                          <option value="Inactive">Inactive</option>
-                        </select>
+                          {getStatusLabel(customer.status)}
+                        </span>
                       </td>
-                      <td>
-                        <div className="customers-actions">
+                      <td className="customers-actions-cell">
+                        <div
+                          className="customers-actions"
+                          ref={openMenuId === customer.id ? actionsRef : null}
+                        >
                           <button
                             type="button"
-                            className="customers-actions__icon"
-                            title="More options"
+                            className="customers-actions__trigger"
+                            onClick={() => {
+                              setOpenMenuId((prev) =>
+                                prev === customer.id ? null : customer.id
+                              );
+                              setOpenStatusMenuId(null);
+                            }}
                           >
                             <MoreVertical size={18} />
                           </button>
 
-                          <button
-                            type="button"
-                            className="customers-actions__icon customers-actions__icon--danger"
-                            title="Delete customer"
-                            onClick={() => handleDeleteCustomer(customer.id)}
-                          >
-                            <Trash2 size={18} />
-                          </button>
+                          {openMenuId === customer.id && (
+                            <div className="customers-actions__menu">
+                              <button type="button" className="customers-actions__item">
+                                <Eye size={18} />
+                                <span>View Details</span>
+                              </button>
+
+                              <button type="button" className="customers-actions__item">
+                                <Pencil size={18} />
+                                <span>Edit</span>
+                              </button>
+
+                              <div className="customers-actions__status-wrapper">
+                                <button
+                                  type="button"
+                                  className="customers-actions__item"
+                                  onClick={() =>
+                                    setOpenStatusMenuId((prev) =>
+                                      prev === customer.id ? null : customer.id
+                                    )
+                                  }
+                                >
+                                  <CircleAlert size={18} />
+                                  <span>Change Status</span>
+                                  <span className="customers-actions__arrow">›</span>
+                                </button>
+
+                                {openStatusMenuId === customer.id && (
+                                  <div className="customers-actions__submenu">
+                                    <button
+                                      type="button"
+                                      className="customers-actions__submenu-item customers-actions__submenu-item--active"
+                                      onClick={() =>
+                                        handleStatusChange(customer.id, "active")
+                                      }
+                                    >
+                                      <CheckCircle2 size={18} />
+                                      <span>Active</span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      className="customers-actions__submenu-item customers-actions__submenu-item--pending"
+                                      onClick={() =>
+                                        handleStatusChange(customer.id, "pending")
+                                      }
+                                    >
+                                      <Clock3 size={18} />
+                                      <span>Pending</span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      className="customers-actions__submenu-item customers-actions__submenu-item--inactive"
+                                      onClick={() =>
+                                        handleStatusChange(customer.id, "inactive")
+                                      }
+                                    >
+                                      <XCircle size={18} />
+                                      <span>Inactive</span>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+
+                              <button
+                                type="button"
+                                className="customers-actions__item"
+                                onClick={() => handleDeleteCustomer(customer.id)}
+                              >
+                                <span>Delete</span>
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -383,68 +651,86 @@ export default function Customers() {
           aria-hidden="true"
         >
           <div
-            className="customers-modal"
+            className="customers-modal customers-modal--styled"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="customers-modal__header">
-              <h3>Add Customer</h3>
+            <div className="customers-modal__header customers-modal__header--styled">
+              <h3>Add New Customer</h3>
 
               <button
                 type="button"
                 className="customers-modal__close"
                 onClick={handleCloseModal}
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
 
-            <form className="customers-modal__form" onSubmit={handleSubmit}>
+            <form className="customers-modal__form customers-modal__form--grid" onSubmit={handleSubmit}>
               <div className="customers-modal__field">
-                <label htmlFor="full_name">Full name</label>
+                <label htmlFor="full_name">Full Name *</label>
                 <input
                   id="full_name"
                   name="full_name"
                   type="text"
+                  placeholder="John Doe"
                   value={form.full_name}
                   onChange={handleInputChange}
                   required
                 />
+                {formErrors.full_name && (
+                  <span className="customers-field-error">{formErrors.full_name}</span>
+                )}
               </div>
 
               <div className="customers-modal__field">
-                <label htmlFor="email">Email</label>
+                <label htmlFor="email">Email *</label>
                 <input
                   id="email"
                   name="email"
                   type="email"
+                  placeholder="john@company.com"
                   value={form.email}
                   onChange={handleInputChange}
                   required
                 />
+                {formErrors.email && (
+                  <span className="customers-field-error">{formErrors.email}</span>
+                )}
               </div>
 
               <div className="customers-modal__field">
-                <label htmlFor="phone_number">Phone number</label>
+                <label htmlFor="phone_number">Phone Number *</label>
                 <input
                   id="phone_number"
                   name="phone_number"
                   type="text"
+                  inputMode="numeric"
+                  maxLength={15}
+                  placeholder="3001234567"
                   value={form.phone_number}
                   onChange={handleInputChange}
                   required
                 />
+                {formErrors.phone_number && (
+                  <span className="customers-field-error">{formErrors.phone_number}</span>
+                )}
               </div>
 
               <div className="customers-modal__field">
-                <label htmlFor="company">Company</label>
+                <label htmlFor="company">Company *</label>
                 <input
                   id="company"
                   name="company"
                   type="text"
+                  placeholder="Company Inc."
                   value={form.company}
                   onChange={handleInputChange}
                   required
                 />
+                {formErrors.company && (
+                  <span className="customers-field-error">{formErrors.company}</span>
+                )}
               </div>
 
               <div className="customers-modal__field">
@@ -455,43 +741,126 @@ export default function Customers() {
                   value={form.status}
                   onChange={handleInputChange}
                 >
-                  <option value="Active">Active</option>
-                  <option value="Pending">Pending</option>
-                  <option value="Inactive">Inactive</option>
+                  <option value="active">Active</option>
+                  <option value="pending">Pending</option>
+                  <option value="inactive">Inactive</option>
                 </select>
               </div>
 
-              <div className="customers-modal__field">
-                <label htmlFor="country">Country</label>
-                <input
-                  id="country"
-                  name="country"
-                  type="text"
-                  value={form.country}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
+<div className="customers-modal__field">
+  <label htmlFor="country">Country *</label>
 
-              <div className="customers-modal__field">
-                <label htmlFor="address">Address</label>
+  <div className="customers-country" ref={countryDropdownRef}>
+    <button
+      type="button"
+      className={`customers-country__trigger ${
+        isCountryOpen ? "customers-country__trigger--open" : ""
+      }`}
+      onClick={() => {
+        setIsCountryOpen((prev) => !prev);
+        setCountrySearch(form.country || "");
+      }}
+    >
+      <span className={form.country ? "" : "customers-country__placeholder"}>
+        {form.country || "Search country..."}
+      </span>
+      <span className="customers-country__arrow">▾</span>
+    </button>
+
+    {isCountryOpen && (
+      <div className="customers-country__dropdown">
+        <div className="customers-country__search-wrap">
+          <input
+            type="text"
+            className="customers-country__search"
+            placeholder="Search country..."
+            value={countrySearch}
+            onChange={(event) => {
+              const value = event.target.value.replace(
+                /[^A-Za-zÁÉÍÓÚáéíóúÑñÜü\s]/g,
+                ""
+              );
+              setCountrySearch(value);
+            }}
+            autoFocus
+          />
+        </div>
+
+        <div className="customers-country__list">
+          {filteredCountries.length > 0 ? (
+            filteredCountries.map((country) => (
+              <button
+                key={country}
+                type="button"
+                className={`customers-country__option ${
+                  form.country === country
+                    ? "customers-country__option--selected"
+                    : ""
+                }`}
+                onClick={() => {
+                  setForm((prev) => ({
+                    ...prev,
+                    country,
+                  }));
+
+                  setFormErrors((prev) => ({
+                    ...prev,
+                    country: validateField("country", country),
+                  }));
+
+                  setCountrySearch(country);
+                  setIsCountryOpen(false);
+                }}
+              >
+                {country}
+              </button>
+            ))
+          ) : (
+            <div className="customers-country__empty">No countries found.</div>
+          )}
+        </div>
+      </div>
+    )}
+  </div>
+
+  {formErrors.country && (
+    <span className="customers-field-error">{formErrors.country}</span>
+  )}
+</div>
+
+              <div className="customers-modal__field customers-modal__field--full">
+                <label htmlFor="address">Address *</label>
                 <input
                   id="address"
                   name="address"
                   type="text"
+                  placeholder="123 Business Ave, Suite 100"
                   value={form.address}
                   onChange={handleInputChange}
                   required
                 />
+                {formErrors.address && (
+                  <span className="customers-field-error">{formErrors.address}</span>
+                )}
               </div>
 
-              <button
-                type="submit"
-                className="customers-modal__submit"
-                disabled={saving}
-              >
-                {saving ? "Saving..." : "Save customer"}
-              </button>
+              <div className="customers-modal__footer">
+                <button
+                  type="button"
+                  className="customers-modal__cancel"
+                  onClick={handleCloseModal}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  className="customers-modal__submit customers-modal__submit--styled"
+                  disabled={saving}
+                >
+                  {saving ? "Creating..." : "Create Customer"}
+                </button>
+              </div>
             </form>
           </div>
         </div>

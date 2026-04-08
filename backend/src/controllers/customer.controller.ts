@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { CustomerService } from "../services/costumer.service";
+import { CustomerService } from "../services/customer.service";
 import type { CustomerStatus } from "../models/customer.model";
 
 type AuthRequest = Request & {

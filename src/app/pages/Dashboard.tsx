@@ -13,7 +13,7 @@ import {
   BarElement,
   PointElement,
   LineElement,
-  Filler
+  Filler,
 } from "chart.js";
 import type { TooltipItem } from "chart.js";
 import { Doughnut, Bar, Line } from "react-chartjs-2";
@@ -30,7 +30,7 @@ ChartJS.register(
   Filler
 );
 
-type CustomerStatus = "Active" | "Pending" | "Inactive";
+type CustomerStatus = "active" | "pending" | "inactive";
 
 type Customer = {
   id: string;
@@ -96,9 +96,15 @@ export default function Dashboard() {
 
   const stats = useMemo(() => {
     const totalCustomers = customers.length;
-    const activeCustomers = customers.filter((c) => c.status === "Active").length;
-    const pendingCustomers = customers.filter((c) => c.status === "Pending").length;
-    const inactiveCustomers = customers.filter((c) => c.status === "Inactive").length;
+    const activeCustomers = customers.filter(
+      (customer) => customer.status === "active"
+    ).length;
+    const pendingCustomers = customers.filter(
+      (customer) => customer.status === "pending"
+    ).length;
+    const inactiveCustomers = customers.filter(
+      (customer) => customer.status === "inactive"
+    ).length;
 
     return {
       totalCustomers,
@@ -108,8 +114,10 @@ export default function Dashboard() {
     };
   }, [customers]);
 
-  const percentage = (value: number, total: number) =>
-    total === 0 ? 0 : Number(((value / total) * 100).toFixed(1));
+  const percentage = (value: number, total: number) => {
+    if (total === 0) return 0;
+    return Number(((value / total) * 100).toFixed(1));
+  };
 
   const statusDistributionData = {
     labels: ["Active", "Pending", "Inactive"],
@@ -120,45 +128,55 @@ export default function Dashboard() {
           stats.pendingCustomers,
           stats.inactiveCustomers,
         ],
-        backgroundColor: ["#22c55e", "#f97316", "#6b7280"],
-        borderWidth: 0
-      }
-    ]
+        backgroundColor: ["#22c55e", "#f59e0b", "#94a3b8"],
+        borderWidth: 0,
+      },
+    ],
   };
 
   const pieOptions = {
     responsive: true,
     maintainAspectRatio: false,
     layout: {
-      padding: 10
+      padding: 10,
     },
     plugins: {
       legend: {
         position: "bottom" as const,
         labels: {
           usePointStyle: true,
-          boxWidth: 10
-        }
+          boxWidth: 10,
+        },
       },
       tooltip: {
         callbacks: {
           label: (ctx: TooltipItem<"doughnut">) => {
             const label = ctx.label || "";
             const value = Number(ctx.parsed || 0);
-            const total = stats.totalCustomers || 1;
-            const pct = ((value / total) * 100).toFixed(1);
+            const pct = percentage(value, stats.totalCustomers);
             return `${label}: ${value} (${pct}%)`;
-          }
-        }
-      }
-    }
+          },
+        },
+      },
+    },
   };
 
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
-
-  const groupedByMonth = useMemo(() => {
-    const result = [0, 0, 0, 0, 0, 0];
+  const months = useMemo(() => {
+    const formatter = new Intl.DateTimeFormat("en", { month: "short" });
     const now = new Date();
+    const result: string[] = [];
+
+    for (let i = 5; i >= 0; i -= 1) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      result.push(formatter.format(d));
+    }
+
+    return result;
+  }, []);
+
+  const newCustomersByMonth = useMemo(() => {
+    const now = new Date();
+    const counts = [0, 0, 0, 0, 0, 0];
 
     customers.forEach((customer) => {
       const createdAt = new Date(customer.created_at);
@@ -169,11 +187,11 @@ export default function Dashboard() {
 
       if (diffMonths >= 0 && diffMonths < 6) {
         const index = 5 - diffMonths;
-        result[index] += 1;
+        counts[index] += 1;
       }
     });
 
-    return result;
+    return counts;
   }, [customers]);
 
   const newCustomersGrowthData = {
@@ -181,37 +199,38 @@ export default function Dashboard() {
     datasets: [
       {
         label: "New Customers",
-        data: groupedByMonth,
-        backgroundColor: "#3b82f6"
-      }
-    ]
+        data: newCustomersByMonth,
+        backgroundColor: "#3b82f6",
+      },
+    ],
   };
 
   const barOptions = {
     plugins: {
       legend: {
-        display: false
-      }
+        display: false,
+      },
     },
     responsive: true,
     maintainAspectRatio: false,
     scales: {
       x: {
-        grid: { display: false }
+        grid: { display: false },
       },
       y: {
         beginAtZero: true,
         grid: { color: "#e5e7eb" },
-        ticks: { stepSize: 1 }
-      }
-    }
+        ticks: { stepSize: 1 },
+      },
+    },
   };
 
   const customerTrendsOverTimeData = useMemo(() => {
+    const now = new Date();
+
     const active = [0, 0, 0, 0, 0, 0];
     const pending = [0, 0, 0, 0, 0, 0];
     const inactive = [0, 0, 0, 0, 0, 0];
-    const now = new Date();
 
     customers.forEach((customer) => {
       const createdAt = new Date(customer.created_at);
@@ -223,9 +242,9 @@ export default function Dashboard() {
       if (diffMonths >= 0 && diffMonths < 6) {
         const index = 5 - diffMonths;
 
-        if (customer.status === "Active") active[index] += 1;
-        if (customer.status === "Pending") pending[index] += 1;
-        if (customer.status === "Inactive") inactive[index] += 1;
+        if (customer.status === "active") active[index] += 1;
+        if (customer.status === "pending") pending[index] += 1;
+        if (customer.status === "inactive") inactive[index] += 1;
       }
     });
 
@@ -236,29 +255,29 @@ export default function Dashboard() {
           label: "Active",
           data: active,
           borderColor: "#22c55e",
-          backgroundColor: "rgba(34,197,94,0.35)",
+          backgroundColor: "rgba(34,197,94,0.25)",
           fill: true,
-          tension: 0.4
+          tension: 0.35,
         },
         {
           label: "Pending",
           data: pending,
-          borderColor: "#f97316",
-          backgroundColor: "rgba(249,115,22,0.35)",
+          borderColor: "#f59e0b",
+          backgroundColor: "rgba(245,158,11,0.25)",
           fill: true,
-          tension: 0.4
+          tension: 0.35,
         },
         {
           label: "Inactive",
           data: inactive,
-          borderColor: "#6b7280",
-          backgroundColor: "rgba(107,114,128,0.35)",
+          borderColor: "#94a3b8",
+          backgroundColor: "rgba(148,163,184,0.25)",
           fill: true,
-          tension: 0.4
-        }
-      ]
+          tension: 0.35,
+        },
+      ],
     };
-  }, [customers]);
+  }, [customers, months]);
 
   const lineOptions = {
     plugins: {
@@ -266,21 +285,22 @@ export default function Dashboard() {
         position: "bottom" as const,
         labels: {
           usePointStyle: true,
-          boxWidth: 8
-        }
-      }
+          boxWidth: 8,
+        },
+      },
     },
     responsive: true,
     maintainAspectRatio: false,
     scales: {
       x: {
-        grid: { color: "#e5e7eb" }
+        grid: { color: "#e5e7eb" },
       },
       y: {
         beginAtZero: true,
-        grid: { color: "#e5e7eb" }
-      }
-    }
+        grid: { color: "#e5e7eb" },
+        ticks: { stepSize: 1 },
+      },
+    },
   };
 
   return (
@@ -347,10 +367,12 @@ export default function Dashboard() {
                 Current distribution by status
               </p>
             </header>
+
             <div className="dashboard-panel-body dashboard-panel-body--pie">
               <div className="dashboard-pie-wrapper">
                 <Doughnut data={statusDistributionData} options={pieOptions} />
               </div>
+
               <div className="dashboard-status-labels">
                 <span className="status-label status-label--active">
                   Active {percentage(stats.activeCustomers, stats.totalCustomers)}%
@@ -372,6 +394,7 @@ export default function Dashboard() {
                 Monthly new customer acquisitions
               </p>
             </header>
+
             <div className="dashboard-panel-body">
               <Bar data={newCustomersGrowthData} options={barOptions} />
             </div>
@@ -381,13 +404,12 @@ export default function Dashboard() {
         <section className="dashboard-row">
           <article className="dashboard-panel">
             <header className="dashboard-panel-header">
-              <h3 className="dashboard-panel-title">
-                Customer Trends Over Time
-              </h3>
+              <h3 className="dashboard-panel-title">Customer Trends Over Time</h3>
               <p className="dashboard-panel-subtitle">
                 6-month customer status trend analysis
               </p>
             </header>
+
             <div className="dashboard-panel-body dashboard-panel-body--large">
               <Line data={customerTrendsOverTimeData} options={lineOptions} />
             </div>
