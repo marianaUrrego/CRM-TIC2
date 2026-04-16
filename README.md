@@ -1,44 +1,71 @@
 # CRM-TIC2
 
-Aplicación **CRM** desarrollada como proyecto académico de **TIC2**, con **React**, **TypeScript**, **Vite** y **SCSS** para gestionar información de clientes y operaciones relacionadas.
+Aplicación CRM desarrollada como proyecto académico de TIC2.  
+El sistema está dividido en:
 
-## 🧱 Stack
+- **Frontend:** React + TypeScript + Vite + SCSS
+- **Backend:** Node.js + Express + TypeScript
+- **Persistencia:** actualmente en memoria / preparación para PostgreSQL
+- **Autenticación:** módulo de registro de usuarios
 
-- **Frontend:** React + TypeScript
-- **Build tool:** Vite
-- **Estilos:** SCSS
-- **Entorno:** Node.js + npm
+## Objetivo del proyecto
 
-## 📦 Instalación y ejecución
+Este proyecto busca centralizar la gestión de usuarios y operaciones relacionadas con un CRM básico, con una arquitectura separada entre frontend y backend.
 
-```bash
-# Clonar el repositorio
-git clone https://github.com/marianaUrrego/CRM-TIC2.git
+## Funcionalidades actuales
 
-cd CRM-TIC2
+- Registro de usuarios
+- Login y navegación entre vistas
+- Dashboard básico
+- Backend con módulo de autenticación
+- Validaciones de entrada en el backend
+- Hash de contraseñas con `bcryptjs`
+- Uso de TypeScript en frontend y backend
 
-# Instalar dependencias
-npm install
+## Stack tecnológico
 
-# Modo desarrollo
-npm run dev
+### Frontend
+- React 19
+- TypeScript
+- Vite
+- React Router DOM
+- SCSS
+- Material UI
+- Emotion
+- Lucide React
 
-# Build de producción
-npm run build
+### Backend
+- Node.js
+- Express
+- TypeScript
+- CORS
+- dotenv
+- bcryptjs
+- jsonwebtoken
+- uuid
+- pg
 
-# Previsualizar build
-npm run preview
-```
+## Estructura general del proyecto
 
-Aplicación (dev) por defecto en: `http://localhost:5173`
-
-
-## 👥 Créditos
-Colaboradores:
-                 [@marianaUrrego](https://github.com/marianaUrrego)
-                 [@sebasvitz](https://github.com/sebasvitz)
-                 [@juanita003](https://github.com/juanita003)
-                 [@natyUrrego](https://github.com/natyUrrego)
-  
-
-Proyecto académico desarrollado en el contexto de **TIC2**.
+```text
+CRM-TIC2/
+├── src/                  # Frontend
+│   ├── app/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── styles/
+│   │   └── router.tsx
+│   ├── App.tsx
+│   └── main.tsx
+├── backend/              # Backend
+│   └── src/
+│       ├── app.ts
+│       ├── server.ts
+│       ├── config/
+│       ├── controllers/
+│       ├── models/
+│       ├── routes/
+│       ├── services/
+│       └── utils/
+├── public/
+└── README.md
