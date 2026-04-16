@@ -5,7 +5,7 @@ El sistema está dividido en:
 
 - **Frontend:** React + TypeScript + Vite + SCSS
 - **Backend:** Node.js + Express + TypeScript
-- **Persistencia:** actualmente en memoria / preparación para PostgreSQL
+- **Persistencia:** base de datos en la nube
 - **Autenticación:** módulo de registro de usuarios
 
 ## Objetivo del proyecto
