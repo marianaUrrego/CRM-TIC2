@@ -93,7 +93,7 @@ export class AuthService {
   static getAuthData(): { token: string | null, user: User | null } {
     const token = localStorage.getItem('auth_token');
     const userData = localStorage.getItem('user_data');
-    
+
     return {
       token,
       user: userData ? JSON.parse(userData) : null
@@ -104,5 +104,32 @@ export class AuthService {
   static clearAuthData(): void {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user_data');
+  }
+
+  // Actualizar perfil en backend
+  static async updateProfile(token: string | null, data: { name?: string; email?: string }): Promise<User> {
+    if (!token) throw new Error('No authentication token available');
+
+    try {
+      const response = await fetch(`${API_URL}/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Update failed');
+      }
+
+      return result.user as User;
+    } catch (error) {
+      if (error instanceof Error) throw error;
+      throw new Error('Network error occurred');
+    }
   }
 }

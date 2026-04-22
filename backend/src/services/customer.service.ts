@@ -102,4 +102,70 @@ export const CustomerService = {
     const result = await pool.query(query, [status, id, ownerUserId]);
     return result.rows[0];
   },
+  async update(id: string, ownerUserId: string, data: Partial<CreateCustomerDto>) {
+    const fields: string[] = [];
+    const params: any[] = [];
+    let idx = 1;
+
+    if (data.full_name !== undefined) {
+      fields.push(`full_name = $${idx++}`);
+      params.push(data.full_name);
+    }
+
+    if (data.email !== undefined) {
+      fields.push(`email = $${idx++}`);
+      params.push(data.email);
+    }
+
+    if (data.phone_number !== undefined) {
+      fields.push(`phone_number = $${idx++}`);
+      params.push(data.phone_number);
+    }
+
+    if (data.company !== undefined) {
+      fields.push(`company = $${idx++}`);
+      params.push(data.company);
+    }
+
+    if (data.status !== undefined) {
+      fields.push(`status = $${idx++}`);
+      params.push(data.status);
+    }
+
+    if (data.country !== undefined) {
+      fields.push(`country = $${idx++}`);
+      params.push(data.country);
+    }
+
+    if (data.address !== undefined) {
+      fields.push(`address = $${idx++}`);
+      params.push(data.address);
+    }
+
+    if (fields.length === 0) return null;
+
+    params.push(id);
+    params.push(ownerUserId);
+
+    const query = `
+      UPDATE customers
+      SET ${fields.join(', ')}, updated_at = NOW()
+      WHERE id = $${idx++} AND owner_user_id = $${idx}
+      RETURNING
+        id,
+        owner_user_id,
+        full_name,
+        email,
+        phone_number,
+        company,
+        status,
+        country,
+        address,
+        created_at,
+        updated_at
+    `;
+
+    const result = await pool.query(query, params);
+    return result.rows[0];
+  },
 };

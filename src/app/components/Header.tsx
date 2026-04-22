@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { AuthService } from "../../services/auth.service";
+import type { User } from "../../services/auth.service";
+import EditProfileModal from "./EditProfileModal";
 import "../styles/header.scss";
 
 export default function Header() {
@@ -21,6 +23,9 @@ export default function Header() {
 
   const userName = user?.name || "User";
 
+  const [currentUser, setCurrentUser] = useState<User | null>(AuthService.getAuthData().user);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+
   const handleToggleMenu = () => {
     setIsMenuOpen((prev) => !prev);
   };
@@ -29,13 +34,15 @@ export default function Header() {
     setIsMenuOpen(false);
   };
 
-  const handleGoCustomers = () => {
-    setIsMenuOpen(false);
-    navigate("/customers");
-  };
-
   const handleEditProfile = () => {
     setIsMenuOpen(false);
+    setIsEditOpen(true);
+  };
+
+  const handleCloseEdit = () => setIsEditOpen(false);
+
+  const handleSaveProfile = (updated: User) => {
+    setCurrentUser(updated);
   };
 
   const handleLogout = () => {
@@ -123,7 +130,7 @@ export default function Header() {
               aria-expanded={isMenuOpen}
             >
               <CircleUserRound size={22} />
-              <span className="crm-header__profile-name">{userName}</span>
+              <span className="crm-header__profile-name">{currentUser?.name || userName}</span>
               <ChevronDown
                 size={18}
                 className={`crm-header__chevron ${isMenuOpen ? "is-open" : ""}`}
@@ -156,6 +163,9 @@ export default function Header() {
           </div>
         </div>
       </div>
+      {isEditOpen && (
+        <EditProfileModal isOpen={isEditOpen} onClose={handleCloseEdit} onSave={handleSaveProfile} />
+      )}
     </header>
   );
 }

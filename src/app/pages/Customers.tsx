@@ -85,6 +85,7 @@ export default function Customers() {
   const navigate = useNavigate();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingCustomerId, setEditingCustomerId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [form, setForm] = useState<CustomerFormState>(initialForm);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
@@ -96,6 +97,7 @@ export default function Customers() {
 
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [openStatusMenuId, setOpenStatusMenuId] = useState<string | null>(null);
+  const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null);
 
   const actionsRef = useRef<HTMLDivElement | null>(null);
 
@@ -288,6 +290,7 @@ export default function Customers() {
     setForm(initialForm);
     setFormErrors({});
     setError("");
+    setEditingCustomerId(null);
     setIsModalOpen(true);
   };
 
@@ -295,6 +298,7 @@ export default function Customers() {
     setIsModalOpen(false);
     setForm(initialForm);
     setFormErrors({});
+    setEditingCustomerId(null);
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -317,22 +321,43 @@ export default function Customers() {
         countries.find(
           (country) => country.toLowerCase() === form.country.trim().toLowerCase()
         ) || form.country.trim();
+      let response: Response;
 
-      const response = await fetch(`${API_URL}/customers`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          ...form,
-          full_name: form.full_name.trim(),
-          email: form.email.trim().toLowerCase(),
-          company: form.company.trim(),
-          country: matchedCountry,
-          address: form.address.trim(),
-        }),
-      });
+      if (editingCustomerId) {
+        // Update existing customer
+        response = await fetch(`${API_URL}/customers/${editingCustomerId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            ...form,
+            full_name: form.full_name.trim(),
+            email: form.email.trim().toLowerCase(),
+            company: form.company.trim(),
+            country: matchedCountry,
+            address: form.address.trim(),
+          }),
+        });
+      } else {
+        // Create new customer
+        response = await fetch(`${API_URL}/customers`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            ...form,
+            full_name: form.full_name.trim(),
+            email: form.email.trim().toLowerCase(),
+            company: form.company.trim(),
+            country: matchedCountry,
+            address: form.address.trim(),
+          }),
+        });
+      }
 
       if (response.status === 401) {
         navigate("/login");
@@ -352,6 +377,22 @@ export default function Customers() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleEditCustomer = (customer: Customer) => {
+    setEditingCustomerId(customer.id);
+    setForm({
+      full_name: customer.full_name,
+      email: customer.email,
+      phone_number: customer.phone_number,
+      company: customer.company,
+      status: customer.status,
+      country: customer.country,
+      address: customer.address,
+    });
+    setFormErrors({});
+    setError("");
+    setIsModalOpen(true);
   };
 
   const handleDeleteCustomer = async (id: string) => {
@@ -389,6 +430,16 @@ export default function Customers() {
       console.error("Error deleting customer:", err);
       setError("Could not delete customer.");
     }
+  };
+
+  const handleViewCustomer = (customer: Customer) => {
+    setViewingCustomer(customer);
+    setOpenMenuId(null);
+    setOpenStatusMenuId(null);
+  };
+
+  const handleCloseView = () => {
+    setViewingCustomer(null);
   };
 
   const handleStatusChange = async (id: string, status: CustomerStatus) => {
@@ -541,12 +592,12 @@ export default function Customers() {
 
                           {openMenuId === customer.id && (
                             <div className="customers-actions__menu">
-                              <button type="button" className="customers-actions__item">
+                              <button type="button" className="customers-actions__item" onClick={() => handleViewCustomer(customer)}>
                                 <Eye size={18} />
                                 <span>View Details</span>
                               </button>
 
-                              <button type="button" className="customers-actions__item">
+                              <button type="button" className="customers-actions__item" onClick={() => handleEditCustomer(customer)}>
                                 <Pencil size={18} />
                                 <span>Edit</span>
                               </button>
@@ -635,7 +686,7 @@ export default function Customers() {
             onClick={(event) => event.stopPropagation()}
           >
             <div className="customers-modal__header customers-modal__header--styled">
-              <h3>Add New Customer</h3>
+              <h3>{editingCustomerId ? "Edit Customer" : "Add New Customer"}</h3>
 
               <button
                 type="button"
@@ -776,10 +827,88 @@ export default function Customers() {
                   className="customers-modal__submit customers-modal__submit--styled"
                   disabled={saving}
                 >
-                  {saving ? "Creating..." : "Create Customer"}
+                  {saving ? (editingCustomerId ? "Updating..." : "Creating...") : (editingCustomerId ? "Update Customer" : "Create Customer")}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {viewingCustomer && (
+        <div
+          className="customers-modal-backdrop"
+          onClick={handleCloseView}
+          aria-hidden="true"
+        >
+          <div
+            className="customers-modal customers-modal--styled"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="customers-modal__header customers-modal__header--styled">
+              <h3>Customer Details</h3>
+
+              <button
+                type="button"
+                className="customers-modal__close"
+                onClick={handleCloseView}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="customers-modal__form customers-modal__form--grid">
+              <div className="customers-modal__field">
+                <label>Name</label>
+                <p>{viewingCustomer.full_name}</p>
+              </div>
+
+              <div className="customers-modal__field">
+                <label>Email</label>
+                <p>{viewingCustomer.email}</p>
+              </div>
+
+              <div className="customers-modal__field">
+                <label>Phone</label>
+                <p>{viewingCustomer.phone_number}</p>
+              </div>
+
+              <div className="customers-modal__field">
+                <label>Company</label>
+                <p>{viewingCustomer.company}</p>
+              </div>
+
+              <div className="customers-modal__field">
+                <label>Status</label>
+                <p>
+                  <span className={`customers-status-badge customers-status-badge--${viewingCustomer.status}`}>
+                    {getStatusLabel(viewingCustomer.status)}
+                  </span>
+                </p>
+              </div>
+
+              <div className="customers-modal__field customers-modal__field--full">
+                <label>Address</label>
+                <p>{viewingCustomer.address}</p>
+              </div>
+
+              <div className="customers-modal__footer">
+                <button type="button" className="customers-modal__cancel" onClick={handleCloseView}>
+                  Close
+                </button>
+
+                <button
+                  type="button"
+                  className="customers-modal__submit customers-modal__submit--styled"
+                  onClick={() => {
+                    const c = viewingCustomer;
+                    handleCloseView();
+                    if (c) handleEditCustomer(c);
+                  }}
+                >
+                  Edit Customer
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

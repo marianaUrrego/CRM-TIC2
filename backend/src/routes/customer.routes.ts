@@ -10,5 +10,6 @@ router.get("/customers", authMiddleware, CustomerController.getAll);
 router.post("/customers", authMiddleware, CustomerController.create);
 router.delete("/customers/:id", authMiddleware, CustomerController.delete);
 router.patch("/customers/:id/status", authMiddleware, CustomerController.updateStatus);
+router.put("/customers/:id", authMiddleware, CustomerController.update);
 
 export default router;

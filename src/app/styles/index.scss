@@ -563,7 +563,7 @@ body {
   background: #f8fafc;
 }
 
-.customers-actions__item + .customers-actions__item {
+.customers-actions__item+.customers-actions__item {
   border-top: 1px solid #e5e7eb;
 }
 
@@ -688,10 +688,19 @@ body {
 }
 
 .customers-modal__field label {
-  margin-bottom: 0.65rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+/* Value styling for view-only fields inside the modal */
+.customers-modal__field p {
+  margin: 0;
+  padding: 10px 0 0 0;
   font-size: 1rem;
   font-weight: 700;
-  color: #111827;
+  color: #0f172a;
 }
 
 .customers-modal__field input,
@@ -794,12 +803,14 @@ body {
     font-size: 18px;
   }
 }
+
 .customers-field-error {
   margin-top: 6px;
   font-size: 13px;
   color: #dc2626;
   font-weight: 500;
 }
+
 .customers-country {
   position: relative;
 }
@@ -897,6 +908,7 @@ body {
   font-size: 14px;
   color: #64748b;
 }
+
 .customers-field-error {
   margin-top: 6px;
   font-size: 13px;
