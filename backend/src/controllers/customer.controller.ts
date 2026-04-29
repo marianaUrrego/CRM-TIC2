@@ -10,16 +10,18 @@ type AuthRequest = Request & {
   };
 };
 
+const validStatuses: CustomerStatus[] = ["active", "pending", "inactive"];
+
 export const CustomerController = {
   async getAll(req: AuthRequest, res: Response) {
     try {
-      const ownerUserId = req.user?.id;
+      const userId = req.user?.id;
 
-      if (!ownerUserId) {
+      if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const customers = await CustomerService.getAllByOwner(ownerUserId);
+      const customers = await CustomerService.getAll();
       return res.status(200).json(customers);
     } catch (error) {
       console.error("Error getting customers:", error);
@@ -57,6 +59,12 @@ export const CustomerController = {
         return res.status(400).json({ message: "Missing required fields" });
       }
 
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({
+          message: "Invalid status. Valid values are: active, pending, inactive",
+        });
+      }
+
       const newCustomer = await CustomerService.create({
         owner_user_id: ownerUserId,
         full_name,
@@ -77,14 +85,14 @@ export const CustomerController = {
 
   async delete(req: AuthRequest, res: Response) {
     try {
-      const ownerUserId = req.user?.id;
+      const userId = req.user?.id;
       const id = String(req.params.id);
 
-      if (!ownerUserId) {
+      if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const deletedCustomer = await CustomerService.delete(id, ownerUserId);
+      const deletedCustomer = await CustomerService.delete(id);
 
       if (!deletedCustomer) {
         return res.status(404).json({ message: "Customer not found" });
@@ -99,11 +107,11 @@ export const CustomerController = {
 
   async updateStatus(req: AuthRequest, res: Response) {
     try {
-      const ownerUserId = req.user?.id;
+      const userId = req.user?.id;
       const id = String(req.params.id);
       const { status } = req.body as { status: CustomerStatus };
 
-      if (!ownerUserId) {
+      if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
@@ -111,11 +119,13 @@ export const CustomerController = {
         return res.status(400).json({ message: "Status is required" });
       }
 
-      const updatedCustomer = await CustomerService.updateStatus(
-        id,
-        ownerUserId,
-        status
-      );
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({
+          message: "Invalid status. Valid values are: active, pending, inactive",
+        });
+      }
+
+      const updatedCustomer = await CustomerService.updateStatus(id, status);
 
       if (!updatedCustomer) {
         return res.status(404).json({ message: "Customer not found" });
@@ -127,12 +137,13 @@ export const CustomerController = {
       return res.status(500).json({ message: "Internal server error" });
     }
   },
+
   async update(req: AuthRequest, res: Response) {
     try {
-      const ownerUserId = req.user?.id;
+      const userId = req.user?.id;
       const id = String(req.params.id);
 
-      if (!ownerUserId) {
+      if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
@@ -146,19 +157,21 @@ export const CustomerController = {
         address,
       } = req.body;
 
-      const updatedCustomer = await CustomerService.update(
-        id,
-        ownerUserId,
-        {
-          full_name,
-          email,
-          phone_number,
-          company,
-          status,
-          country,
-          address,
-        }
-      );
+      if (status !== undefined && !validStatuses.includes(status)) {
+        return res.status(400).json({
+          message: "Invalid status. Valid values are: active, pending, inactive",
+        });
+      }
+
+      const updatedCustomer = await CustomerService.update(id, {
+        full_name,
+        email,
+        phone_number,
+        company,
+        status,
+        country,
+        address,
+      });
 
       if (!updatedCustomer) {
         return res.status(404).json({ message: "Customer not found" });

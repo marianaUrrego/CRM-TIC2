@@ -2,7 +2,7 @@ import { pool } from "../config/db";
 import type { CreateCustomerDto, CustomerStatus } from "../models/customer.model";
 
 export const CustomerService = {
-  async getAllByOwner(ownerUserId: string) {
+  async getAll() {
     const query = `
       SELECT
         id,
@@ -17,11 +17,10 @@ export const CustomerService = {
         created_at,
         updated_at
       FROM customers
-      WHERE owner_user_id = $1
       ORDER BY created_at DESC
     `;
 
-    const result = await pool.query(query, [ownerUserId]);
+    const result = await pool.query(query);
     return result.rows;
   },
 
@@ -67,24 +66,24 @@ export const CustomerService = {
     return result.rows[0];
   },
 
-  async delete(id: string, ownerUserId: string) {
+  async delete(id: string) {
     const query = `
       DELETE FROM customers
-      WHERE id = $1 AND owner_user_id = $2
+      WHERE id = $1
       RETURNING id
     `;
 
-    const result = await pool.query(query, [id, ownerUserId]);
+    const result = await pool.query(query, [id]);
     return result.rows[0];
   },
 
-  async updateStatus(id: string, ownerUserId: string, status: CustomerStatus) {
+  async updateStatus(id: string, status: CustomerStatus) {
     const query = `
       UPDATE customers
       SET
         status = $1,
         updated_at = NOW()
-      WHERE id = $2 AND owner_user_id = $3
+      WHERE id = $2
       RETURNING
         id,
         owner_user_id,
@@ -99,10 +98,11 @@ export const CustomerService = {
         updated_at
     `;
 
-    const result = await pool.query(query, [status, id, ownerUserId]);
+    const result = await pool.query(query, [status, id]);
     return result.rows[0];
   },
-  async update(id: string, ownerUserId: string, data: Partial<CreateCustomerDto>) {
+
+  async update(id: string, data: Partial<CreateCustomerDto>) {
     const fields: string[] = [];
     const params: any[] = [];
     let idx = 1;
@@ -145,12 +145,11 @@ export const CustomerService = {
     if (fields.length === 0) return null;
 
     params.push(id);
-    params.push(ownerUserId);
 
     const query = `
       UPDATE customers
-      SET ${fields.join(', ')}, updated_at = NOW()
-      WHERE id = $${idx++} AND owner_user_id = $${idx}
+      SET ${fields.join(", ")}, updated_at = NOW()
+      WHERE id = $${idx}
       RETURNING
         id,
         owner_user_id,
