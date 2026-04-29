@@ -81,12 +81,50 @@ const countries = [
   "Venezuela",
 ];
 
+const rowsPerPageOptions = [8, 10, 25, 50];
+
+const getPaginationItems = (currentPage: number, totalPages: number) => {
+  const delta = 1;
+  const range: Array<number | "..."> = [];
+
+  for (let page = 1; page <= totalPages; page++) {
+    const isFirstPage = page === 1;
+    const isLastPage = page === totalPages;
+    const isNearCurrentPage =
+      page >= currentPage - delta && page <= currentPage + delta;
+
+    if (isFirstPage || isLastPage || isNearCurrentPage) {
+      range.push(page);
+    }
+  }
+
+  const paginationItems: Array<number | "..."> = [];
+
+  range.forEach((page, index) => {
+    const previousPage = range[index - 1];
+
+    if (
+      typeof page === "number" &&
+      typeof previousPage === "number" &&
+      page - previousPage > 1
+    ) {
+      paginationItems.push("...");
+    }
+
+    paginationItems.push(page);
+  });
+
+  return paginationItems;
+};
+
 export default function Customers() {
   const navigate = useNavigate();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCustomerId, setEditingCustomerId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+const [rowsPerPage, setRowsPerPage] = useState(8);
   const [form, setForm] = useState<CustomerFormState>(initialForm);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
 
@@ -492,6 +530,36 @@ export default function Customers() {
     });
   }, [customers, search]);
 
+  useEffect(() => {
+  setCurrentPage(1);
+}, [search, rowsPerPage]);
+
+const totalEntries = filteredCustomers.length;
+const totalPages = Math.max(1, Math.ceil(totalEntries / rowsPerPage));
+
+useEffect(() => {
+  if (currentPage > totalPages) {
+    setCurrentPage(totalPages);
+  }
+}, [currentPage, totalPages]);
+
+const startIndex = totalEntries === 0 ? 0 : (currentPage - 1) * rowsPerPage;
+const endIndex = Math.min(startIndex + rowsPerPage, totalEntries);
+
+const paginatedCustomers = useMemo(() => {
+  return filteredCustomers.slice(startIndex, endIndex);
+}, [filteredCustomers, startIndex, endIndex]);
+
+const paginationItems = useMemo(() => {
+  return getPaginationItems(currentPage, totalPages);
+}, [currentPage, totalPages]);
+
+const handleRowsPerPageChange = (
+  event: React.ChangeEvent<HTMLSelectElement>
+) => {
+  setRowsPerPage(Number(event.target.value));
+};
+
   const getStatusLabel = (status: CustomerStatus) => {
     if (status === "active") return "Active";
     if (status === "pending") return "Pending";
@@ -560,7 +628,7 @@ export default function Customers() {
                     </td>
                   </tr>
                 ) : (
-                  filteredCustomers.map((customer) => (
+                  paginatedCustomers.map((customer) => (
                     <tr key={customer.id}>
                       <td className="customers-table__name">{customer.full_name}</td>
                       <td>{customer.email}</td>
@@ -672,6 +740,72 @@ export default function Customers() {
               </tbody>
             </table>
           </div>
+          {!loading && totalEntries > 0 && (
+            <div className="customers-pagination">
+              <div className="customers-pagination__info">
+                <span>
+                  Showing data {startIndex + 1} to {endIndex} of {totalEntries} entries
+                </span>
+
+                <label className="customers-pagination__rows">
+                  <span>Rows per page</span>
+                  <select value={rowsPerPage} onChange={handleRowsPerPageChange}>
+                    {rowsPerPageOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="customers-pagination__controls">
+                <button
+                  type="button"
+                  className="customers-pagination__button"
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  aria-label="Previous page"
+                >
+                  ‹
+                </button>
+
+                {paginationItems.map((item, index) =>
+                  item === "..." ? (
+                    <span
+                      key={`ellipsis-${index}`}
+                      className="customers-pagination__ellipsis"
+                    >
+                      ...
+                    </span>
+                  ) : (
+                    <button
+                      key={item}
+                      type="button"
+                      className={`customers-pagination__button ${
+                        currentPage === item ? "customers-pagination__button--active" : ""
+                      }`}
+                      onClick={() => setCurrentPage(item)}
+                    >
+                      {item}
+                    </button>
+                  )
+                )}
+
+                <button
+                  type="button"
+                  className="customers-pagination__button"
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                  }
+                  disabled={currentPage === totalPages}
+                  aria-label="Next page"
+                >
+                  ›
+                </button>
+              </div>
+            </div>
+          )}
         </section>
       </main>
 

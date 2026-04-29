@@ -477,6 +477,102 @@ body {
   color: #64748b;
 }
 
+.customers-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.customers-pagination__info {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.customers-pagination__rows {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.customers-pagination__rows select {
+  height: 36px;
+  min-width: 72px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 0 10px;
+  color: #334155;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+}
+
+.customers-pagination__rows select:focus {
+  border-color: #315cf0;
+  box-shadow: 0 0 0 3px rgba(49, 92, 240, 0.12);
+}
+
+.customers-pagination__controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.customers-pagination__button {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 9px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.customers-pagination__button:hover:not(:disabled) {
+  background: #eef2ff;
+  color: #315cf0;
+  transform: translateY(-1px);
+}
+
+.customers-pagination__button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.customers-pagination__button--active {
+  background: #4f46e5;
+  color: #ffffff;
+}
+
+.customers-pagination__button--active:hover {
+  background: #4f46e5;
+  color: #ffffff;
+  transform: none;
+}
+
+.customers-pagination__ellipsis {
+  min-width: 24px;
+  text-align: center;
+  color: #64748b;
+  font-weight: 700;
+}
+
 .customers-status-badge {
   display: inline-flex;
   align-items: center;
@@ -801,6 +897,20 @@ body {
 
   .customers-panel__title {
     font-size: 18px;
+  }
+  .customers-pagination {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .customers-pagination__info {
+    justify-content: center;
+    text-align: center;
+  }
+
+  .customers-pagination__controls {
+    justify-content: center;
+    flex-wrap: wrap;
   }
 }
 
