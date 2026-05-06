@@ -14,6 +14,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import { AuthService } from "../../services/auth.service";
+import { API_URL } from "../../services/api";
 
 type CustomerStatus = "active" | "pending" | "inactive";
 
@@ -42,8 +43,6 @@ type CustomerFormState = {
 };
 
 type FormErrors = Partial<Record<keyof CustomerFormState, string>>;
-
-const API_URL = `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api`;
 
 const initialForm: CustomerFormState = {
   full_name: "",

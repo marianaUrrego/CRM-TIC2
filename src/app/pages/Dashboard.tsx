@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import { AuthService } from "../../services/auth.service";
+import { API_URL } from "../../services/api";
 
 import {
   Chart as ChartJS,
@@ -46,7 +47,6 @@ type Customer = {
   updated_at: string;
 };
 
-const API_URL = `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api`;
 
 export default function Dashboard() {
   const navigate = useNavigate();
