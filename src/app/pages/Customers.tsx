@@ -23,10 +23,8 @@ import type {
   PaginationItem,
 } from "../../features/customers/customer.types";
 import {
-  CUSTOMER_STATUS_LABELS,
-  CUSTOMER_STATUS_OPTIONS,
   INITIAL_CUSTOMER_FORM,
-  ROWS_PER_PAGE_OPTIONS,
+  CUSTOMER_STATUS_OPTIONS,
 } from "../../features/customers/customer.constants";
 import {
   normalizeCustomerPayload,
@@ -34,6 +32,8 @@ import {
   validateCustomerField,
   validateCustomerForm,
 } from "../../features/customers/customer.validation";
+import CustomerStatusBadge from "../../features/customers/components/CustomerStatusBadge";
+import CustomerPagination from "../../features/customers/components/CustomerPagination";
 
 const getPaginationItems = (
   currentPage: number,
@@ -364,11 +364,7 @@ export default function Customers() {
                       <td>{customer.email}</td>
                       <td>{customer.company}</td>
                       <td>
-                        <span
-                          className={`customers-status-badge customers-status-badge--${customer.status}`}
-                        >
-                          {CUSTOMER_STATUS_LABELS[customer.status]}
-                        </span>
+                        <CustomerStatusBadge status={customer.status} />
                       </td>
                       <td className="customers-actions-cell">
                         <div
@@ -490,78 +486,17 @@ export default function Customers() {
           </div>
 
           {!loading && totalEntries > 0 && (
-            <div className="customers-pagination">
-              <div className="customers-pagination__info">
-                <span>
-                  Showing data {startIndex + 1} to {endIndex} of{" "}
-                  {totalEntries} entries
-                </span>
-
-                <label className="customers-pagination__rows">
-                  <span>Rows per page</span>
-                  <select
-                    value={rowsPerPage}
-                    onChange={handleRowsPerPageChange}
-                  >
-                    {ROWS_PER_PAGE_OPTIONS.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-
-              <div className="customers-pagination__controls">
-                <button
-                  type="button"
-                  className="customers-pagination__button"
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.max(prev - 1, 1))
-                  }
-                  disabled={currentPage === 1}
-                  aria-label="Previous page"
-                >
-                  ‹
-                </button>
-
-                {paginationItems.map((item, index) =>
-                  item === "..." ? (
-                    <span
-                      key={`ellipsis-${index}`}
-                      className="customers-pagination__ellipsis"
-                    >
-                      ...
-                    </span>
-                  ) : (
-                    <button
-                      key={item}
-                      type="button"
-                      className={`customers-pagination__button ${
-                        currentPage === item
-                          ? "customers-pagination__button--active"
-                          : ""
-                      }`}
-                      onClick={() => setCurrentPage(item)}
-                    >
-                      {item}
-                    </button>
-                  )
-                )}
-
-                <button
-                  type="button"
-                  className="customers-pagination__button"
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                  }
-                  disabled={currentPage === totalPages}
-                  aria-label="Next page"
-                >
-                  ›
-                </button>
-              </div>
-            </div>
+            <CustomerPagination
+              totalEntries={totalEntries}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              rowsPerPage={rowsPerPage}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              paginationItems={paginationItems}
+              onRowsPerPageChange={handleRowsPerPageChange}
+              onPageChange={setCurrentPage}
+            />
           )}
         </section>
       </main>
@@ -792,11 +727,7 @@ export default function Customers() {
               <div className="customers-modal__field">
                 <label>Status</label>
                 <p>
-                  <span
-                    className={`customers-status-badge customers-status-badge--${viewingCustomer.status}`}
-                  >
-                    {CUSTOMER_STATUS_LABELS[viewingCustomer.status]}
-                  </span>
+                  <CustomerStatusBadge status={viewingCustomer.status} />
                 </p>
               </div>
 
