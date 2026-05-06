@@ -14,7 +14,10 @@ import {
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import { AuthService } from "../../services/auth.service";
-import { API_URL } from "../../services/api";
+import {
+  CustomerService,
+  isUnauthorizedError,
+} from "../../services/customer.service";
 import type {
   Customer,
   CustomerFormState,
@@ -100,25 +103,14 @@ const [rowsPerPage, setRowsPerPage] = useState(8);
         return;
       }
 
-      const response = await fetch(`${API_URL}/customers`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.status === 401) {
+      const data = await CustomerService.getCustomers(token);
+      setCustomers(data);
+    } catch (err) {
+      if (isUnauthorizedError(err)) {
         navigate("/login");
         return;
       }
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch customers");
-      }
-
-      const data: Customer[] = await response.json();
-      setCustomers(data);
-    } catch (err) {
       console.error("Error fetching customers:", err);
       setError("Could not load customers.");
     } finally {
@@ -308,58 +300,32 @@ const [rowsPerPage, setRowsPerPage] = useState(8);
         ALLOWED_COUNTRIES.find(
           (country) => country.toLowerCase() === form.country.trim().toLowerCase()
         ) || form.country.trim();
-      let response: Response;
+
+      const payload: CustomerFormState = {
+        ...form,
+        full_name: form.full_name.trim(),
+        email: form.email.trim().toLowerCase(),
+        phone_number: form.phone_number.trim(),
+        company: form.company.trim(),
+        country: matchedCountry,
+        address: form.address.trim(),
+      };
 
       if (editingCustomerId) {
-        // Update existing customer
-        response = await fetch(`${API_URL}/customers/${editingCustomerId}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            ...form,
-            full_name: form.full_name.trim(),
-            email: form.email.trim().toLowerCase(),
-            company: form.company.trim(),
-            country: matchedCountry,
-            address: form.address.trim(),
-          }),
-        });
+        await CustomerService.updateCustomer(editingCustomerId, payload, token);
       } else {
-        // Create new customer
-        response = await fetch(`${API_URL}/customers`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            ...form,
-            full_name: form.full_name.trim(),
-            email: form.email.trim().toLowerCase(),
-            company: form.company.trim(),
-            country: matchedCountry,
-            address: form.address.trim(),
-          }),
-        });
-      }
-
-      if (response.status === 401) {
-        navigate("/login");
-        return;
-      }
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.message || "Failed to create customer");
+        await CustomerService.createCustomer(payload, token);
       }
 
       handleCloseModal();
       await fetchCustomers();
     } catch (err) {
-      console.error("Error creating customer:", err);
+      if (isUnauthorizedError(err)) {
+        navigate("/login");
+        return;
+      }
+
+      console.error("Error saving customer:", err);
       setError("Could not save customer.");
     } finally {
       setSaving(false);
@@ -383,7 +349,10 @@ const [rowsPerPage, setRowsPerPage] = useState(8);
   };
 
   const handleDeleteCustomer = async (id: string) => {
-    const confirmed = window.confirm("Are you sure you want to delete this customer?");
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this customer?"
+    );
+
     if (!confirmed) return;
 
     try {
@@ -394,26 +363,17 @@ const [rowsPerPage, setRowsPerPage] = useState(8);
         return;
       }
 
-      const response = await fetch(`${API_URL}/customers/${id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.status === 401) {
-        navigate("/login");
-        return;
-      }
-
-      if (!response.ok) {
-        throw new Error("Failed to delete customer");
-      }
+      await CustomerService.deleteCustomer(id, token);
 
       setOpenMenuId(null);
       setOpenStatusMenuId(null);
       await fetchCustomers();
     } catch (err) {
+      if (isUnauthorizedError(err)) {
+        navigate("/login");
+        return;
+      }
+
       console.error("Error deleting customer:", err);
       setError("Could not delete customer.");
     }
@@ -438,28 +398,17 @@ const [rowsPerPage, setRowsPerPage] = useState(8);
         return;
       }
 
-      const response = await fetch(`${API_URL}/customers/${id}/status`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status }),
-      });
-
-      if (response.status === 401) {
-        navigate("/login");
-        return;
-      }
-
-      if (!response.ok) {
-        throw new Error("Failed to update customer status");
-      }
+      await CustomerService.updateCustomerStatus(id, status, token);
 
       setOpenMenuId(null);
       setOpenStatusMenuId(null);
       await fetchCustomers();
     } catch (err) {
+      if (isUnauthorizedError(err)) {
+        navigate("/login");
+        return;
+      }
+
       console.error("Error updating customer status:", err);
       setError("Could not update customer status.");
     }

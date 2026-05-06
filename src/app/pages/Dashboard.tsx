@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import { AuthService } from "../../services/auth.service";
-import { API_URL } from "../../services/api";
-
+import {
+  CustomerService,
+  isUnauthorizedError,
+} from "../../services/customer.service";
 import {
   Chart as ChartJS,
   ArcElement,
@@ -49,25 +51,14 @@ export default function Dashboard() {
         return;
       }
 
-      const response = await fetch(`${API_URL}/customers`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.status === 401) {
+      const data = await CustomerService.getCustomers(token);
+      setCustomers(data);
+    } catch (error) {
+      if (isUnauthorizedError(error)) {
         navigate("/login");
         return;
       }
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch customers");
-      }
-
-      const data: Customer[] = await response.json();
-      setCustomers(data);
-    } catch (error) {
       console.error("Error loading dashboard customers:", error);
     } finally {
       setLoading(false);
