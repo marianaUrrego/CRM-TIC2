@@ -15,76 +15,26 @@ import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import { AuthService } from "../../services/auth.service";
 import { API_URL } from "../../services/api";
+import type {
+  Customer,
+  CustomerFormState,
+  CustomerStatus,
+  FormErrors,
+  PaginationItem,
+} from "../../features/customers/customer.types";
 
-type CustomerStatus = "active" | "pending" | "inactive";
+import {
+  ALLOWED_COUNTRIES,
+  CUSTOMER_REFRESH_INTERVAL_MS,
+  CUSTOMER_STATUS_LABELS,
+  CUSTOMER_STATUS_OPTIONS,
+  INITIAL_CUSTOMER_FORM,
+  ROWS_PER_PAGE_OPTIONS,
+} from "../../features/customers/customer.constants";
 
-type Customer = {
-  id: string;
-  owner_user_id: string;
-  full_name: string;
-  email: string;
-  phone_number: string;
-  company: string;
-  status: CustomerStatus;
-  country: string;
-  address: string;
-  created_at: string;
-  updated_at: string;
-};
-
-type CustomerFormState = {
-  full_name: string;
-  email: string;
-  phone_number: string;
-  company: string;
-  status: CustomerStatus;
-  country: string;
-  address: string;
-};
-
-type FormErrors = Partial<Record<keyof CustomerFormState, string>>;
-
-const initialForm: CustomerFormState = {
-  full_name: "",
-  email: "",
-  phone_number: "",
-  company: "",
-  status: "active",
-  country: "",
-  address: "",
-};
-
-const countries = [
-  "Argentina",
-  "Australia",
-  "Brazil",
-  "Canada",
-  "Chile",
-  "China",
-  "Colombia",
-  "Costa Rica",
-  "Ecuador",
-  "France",
-  "Germany",
-  "India",
-  "Italy",
-  "Japan",
-  "Mexico",
-  "Panama",
-  "Peru",
-  "Portugal",
-  "Spain",
-  "United Kingdom",
-  "United States",
-  "Uruguay",
-  "Venezuela",
-];
-
-const rowsPerPageOptions = [8, 10, 25, 50];
-
-const getPaginationItems = (currentPage: number, totalPages: number) => {
+const getPaginationItems = (currentPage: number, totalPages: number): PaginationItem[] => {
   const delta = 1;
-  const range: Array<number | "..."> = [];
+  const range: PaginationItem[] = [];
 
   for (let page = 1; page <= totalPages; page++) {
     const isFirstPage = page === 1;
@@ -97,7 +47,7 @@ const getPaginationItems = (currentPage: number, totalPages: number) => {
     }
   }
 
-  const paginationItems: Array<number | "..."> = [];
+  const paginationItems: PaginationItem[] = [];
 
   range.forEach((page, index) => {
     const previousPage = range[index - 1];
@@ -124,7 +74,7 @@ export default function Customers() {
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 const [rowsPerPage, setRowsPerPage] = useState(8);
-  const [form, setForm] = useState<CustomerFormState>(initialForm);
+  const [form, setForm] = useState<CustomerFormState>(INITIAL_CUSTOMER_FORM);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
 
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -189,7 +139,7 @@ const [rowsPerPage, setRowsPerPage] = useState(8);
 
     const interval = setInterval(() => {
       fetchCustomers(token);
-    }, 5000);
+    }, CUSTOMER_REFRESH_INTERVAL_MS);
 
     return () => clearInterval(interval);
   }, [navigate]);
@@ -253,7 +203,7 @@ const [rowsPerPage, setRowsPerPage] = useState(8);
         }
 
         const normalizedInput = trimmedValue.toLowerCase();
-        const isValidCountry = countries.some(
+        const isValidCountry = ALLOWED_COUNTRIES.some(
           (country) => country.toLowerCase() === normalizedInput
         );
 
@@ -324,7 +274,7 @@ const [rowsPerPage, setRowsPerPage] = useState(8);
   };
 
   const handleOpenModal = () => {
-    setForm(initialForm);
+    setForm(INITIAL_CUSTOMER_FORM);
     setFormErrors({});
     setError("");
     setEditingCustomerId(null);
@@ -333,7 +283,7 @@ const [rowsPerPage, setRowsPerPage] = useState(8);
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setForm(initialForm);
+    setForm(INITIAL_CUSTOMER_FORM);
     setFormErrors({});
     setEditingCustomerId(null);
   };
@@ -355,7 +305,7 @@ const [rowsPerPage, setRowsPerPage] = useState(8);
       }
 
       const matchedCountry =
-        countries.find(
+        ALLOWED_COUNTRIES.find(
           (country) => country.toLowerCase() === form.country.trim().toLowerCase()
         ) || form.country.trim();
       let response: Response;
@@ -559,12 +509,6 @@ const handleRowsPerPageChange = (
   setRowsPerPage(Number(event.target.value));
 };
 
-  const getStatusLabel = (status: CustomerStatus) => {
-    if (status === "active") return "Active";
-    if (status === "pending") return "Pending";
-    return "Inactive";
-  };
-
   return (
     <div className="customers-page">
       <Header />
@@ -636,7 +580,7 @@ const handleRowsPerPageChange = (
                         <span
                           className={`customers-status-badge customers-status-badge--${customer.status}`}
                         >
-                          {getStatusLabel(customer.status)}
+                          {CUSTOMER_STATUS_LABELS[customer.status]}
                         </span>
                       </td>
                       <td className="customers-actions-cell">
@@ -749,7 +693,7 @@ const handleRowsPerPageChange = (
                 <label className="customers-pagination__rows">
                   <span>Rows per page</span>
                   <select value={rowsPerPage} onChange={handleRowsPerPageChange}>
-                    {rowsPerPageOptions.map((option) => (
+                    {ROWS_PER_PAGE_OPTIONS.map((option) => (
                       <option key={option} value={option}>
                         {option}
                       </option>
@@ -908,9 +852,11 @@ const handleRowsPerPageChange = (
                   value={form.status}
                   onChange={handleInputChange}
                 >
-                  <option value="active">Active</option>
-                  <option value="pending">Pending</option>
-                  <option value="inactive">Inactive</option>
+                  {CUSTOMER_STATUS_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -1014,7 +960,7 @@ const handleRowsPerPageChange = (
                 <label>Status</label>
                 <p>
                   <span className={`customers-status-badge customers-status-badge--${viewingCustomer.status}`}>
-                    {getStatusLabel(viewingCustomer.status)}
+                    {CUSTOMER_STATUS_LABELS[viewingCustomer.status]}
                   </span>
                 </p>
               </div>

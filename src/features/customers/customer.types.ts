@@ -1,0 +1,31 @@
+export type CustomerStatus = "active" | "pending" | "inactive";
+
+export type Customer = {
+  id: string;
+  owner_user_id: string;
+  full_name: string;
+  email: string;
+  phone_number: string;
+  company: string;
+  status: CustomerStatus;
+  country: string;
+  address: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CustomerFormState = {
+  full_name: string;
+  email: string;
+  phone_number: string;
+  company: string;
+  status: CustomerStatus;
+  country: string;
+  address: string;
+};
+
+export type CustomerFormField = keyof CustomerFormState;
+
+export type FormErrors = Partial<Record<CustomerFormField, string>>;
+
+export type PaginationItem = number | "...";
