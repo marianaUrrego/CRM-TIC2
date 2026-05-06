@@ -20,12 +20,12 @@ import {
 } from "../../services/customer.service";
 import type {
   Customer,
+  CustomerFormField,
   CustomerFormState,
   CustomerStatus,
   FormErrors,
   PaginationItem,
 } from "../../features/customers/customer.types";
-
 import {
   ALLOWED_COUNTRIES,
   CUSTOMER_REFRESH_INTERVAL_MS,
@@ -34,6 +34,12 @@ import {
   INITIAL_CUSTOMER_FORM,
   ROWS_PER_PAGE_OPTIONS,
 } from "../../features/customers/customer.constants";
+import {
+  normalizeCustomerPayload,
+  sanitizeCustomerFieldValue,
+  validateCustomerField,
+  validateCustomerForm,
+} from "../../features/customers/customer.validation";
 
 const getPaginationItems = (currentPage: number, totalPages: number): PaginationItem[] => {
   const delta = 1;
@@ -151,118 +157,39 @@ const [rowsPerPage, setRowsPerPage] = useState(8);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const validateField = (
-    name: keyof CustomerFormState,
-    value: string
-  ): string => {
-    const trimmedValue = value.trim();
+  const validateCurrentForm = () => {
+    const errors = validateCustomerForm(form);
 
-    switch (name) {
-      case "full_name":
-        if (!trimmedValue) return "Full name is required.";
-        if (trimmedValue.length < 3) return "Full name must have at least 3 characters.";
-        if (!/^[A-Za-zÁÉÍÓÚáéíóúÑñÜü\s]+$/.test(trimmedValue)) {
-          return "Full name can only contain letters and spaces.";
-        }
-        return "";
+    setFormErrors(errors);
 
-      case "email":
-        if (!trimmedValue) return "Email is required.";
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedValue)) {
-          return "Enter a valid email address.";
-        }
-        return "";
-
-      case "phone_number":
-        if (!trimmedValue) return "Phone number is required.";
-        if (!/^\d+$/.test(trimmedValue)) {
-          return "Phone number can only contain numbers.";
-        }
-        if (trimmedValue.length < 7) return "Phone number must have at least 7 digits.";
-        if (trimmedValue.length > 15) return "Phone number cannot exceed 15 digits.";
-        return "";
-
-      case "company":
-        if (!trimmedValue) return "Company is required.";
-        if (trimmedValue.length < 2) return "Company must have at least 2 characters.";
-        return "";
-
-      case "country": {
-        if (!trimmedValue) return "Country is required.";
-
-        if (!/^[A-Za-zÁÉÍÓÚáéíóúÑñÜü\s]+$/.test(trimmedValue)) {
-          return "Country can only contain letters and spaces.";
-        }
-
-        const normalizedInput = trimmedValue.toLowerCase();
-        const isValidCountry = ALLOWED_COUNTRIES.some(
-          (country) => country.toLowerCase() === normalizedInput
-        );
-
-        if (!isValidCountry) {
-          return "Please enter a valid country from the allowed list.";
-        }
-
-        return "";
-      }
-
-      case "address":
-        if (!trimmedValue) return "Address is required.";
-        if (trimmedValue.length < 5) return "Address must have at least 5 characters.";
-        return "";
-
-      case "status":
-        if (!trimmedValue) return "Status is required.";
-        return "";
-
-      default:
-        return "";
-    }
-  };
-
-  const validateForm = () => {
-    const errors: FormErrors = {
-      full_name: validateField("full_name", form.full_name),
-      email: validateField("email", form.email),
-      phone_number: validateField("phone_number", form.phone_number),
-      company: validateField("company", form.company),
-      status: validateField("status", form.status),
-      country: validateField("country", form.country),
-      address: validateField("address", form.address),
-    };
-
-    const cleanedErrors = Object.fromEntries(
-      Object.entries(errors).filter(([, value]) => value)
-    ) as FormErrors;
-
-    setFormErrors(cleanedErrors);
-    return Object.keys(cleanedErrors).length === 0;
+    return Object.keys(errors).length === 0;
   };
 
   const handleInputChange = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    const { name, value } = event.target;
+    const field = event.target.name as CustomerFormField;
+    const nextValue = sanitizeCustomerFieldValue(field, event.target.value);
 
-    let nextValue = value;
+    setForm((prev) =>
+      ({
+        ...prev,
+        [field]: nextValue,
+      } as CustomerFormState)
+    );
 
-    if (name === "full_name" || name === "country") {
-      nextValue = value.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñÜü\s]/g, "");
-    }
+    setFormErrors((prev) => {
+      const fieldError = validateCustomerField(field, nextValue);
+      const nextErrors = { ...prev };
 
-    if (name === "phone_number") {
-      nextValue = value.replace(/\D/g, "").slice(0, 15);
-    }
+      if (fieldError) {
+        nextErrors[field] = fieldError;
+      } else {
+        delete nextErrors[field];
+      }
 
-    setForm((prev) => ({
-      ...prev,
-      [name]: nextValue,
-    }));
-
-    setFormErrors((prev) => ({
-      ...prev,
-      [name]: validateField(name as keyof CustomerFormState, nextValue),
-    }));
+      return nextErrors;
+    });
   };
 
   const handleOpenModal = () => {
@@ -283,7 +210,7 @@ const [rowsPerPage, setRowsPerPage] = useState(8);
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!validateForm()) return;
+    if (!validateCurrentForm()) return;
 
     try {
       setSaving(true);
@@ -296,20 +223,7 @@ const [rowsPerPage, setRowsPerPage] = useState(8);
         return;
       }
 
-      const matchedCountry =
-        ALLOWED_COUNTRIES.find(
-          (country) => country.toLowerCase() === form.country.trim().toLowerCase()
-        ) || form.country.trim();
-
-      const payload: CustomerFormState = {
-        ...form,
-        full_name: form.full_name.trim(),
-        email: form.email.trim().toLowerCase(),
-        phone_number: form.phone_number.trim(),
-        company: form.company.trim(),
-        country: matchedCountry,
-        address: form.address.trim(),
-      };
+      const payload = normalizeCustomerPayload(form);
 
       if (editingCustomerId) {
         await CustomerService.updateCustomer(editingCustomerId, payload, token);
