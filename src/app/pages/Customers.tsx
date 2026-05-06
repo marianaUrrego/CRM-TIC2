@@ -1,66 +1,33 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Search} from "lucide-react";
-import CustomerTable from "../../features/customers/components/CustomerTable";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Plus, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+
 import Header from "../components/Header";
+
 import { useCustomers } from "../../features/customers/hooks/useCustomers";
+import { useCustomerTable } from "../../features/customers/hooks/useCustomerTable";
+
+import CustomerTable from "../../features/customers/components/CustomerTable";
+import CustomerPagination from "../../features/customers/components/CustomerPagination";
+import CustomerFormModal from "../../features/customers/components/CustomerFormModal";
+import CustomerDetailsModal from "../../features/customers/components/CustomerDetailsModal";
+
 import type {
   Customer,
   CustomerFormField,
   CustomerFormState,
   CustomerStatus,
   FormErrors,
-  PaginationItem,
 } from "../../features/customers/customer.types";
-import {
-  INITIAL_CUSTOMER_FORM,
-} from "../../features/customers/customer.constants";
+
+import { INITIAL_CUSTOMER_FORM } from "../../features/customers/customer.constants";
+
 import {
   normalizeCustomerPayload,
   sanitizeCustomerFieldValue,
   validateCustomerField,
   validateCustomerForm,
 } from "../../features/customers/customer.validation";
-import CustomerPagination from "../../features/customers/components/CustomerPagination";
-import CustomerFormModal from "../../features/customers/components/CustomerFormModal";
-import CustomerDetailsModal from "../../features/customers/components/CustomerDetailsModal";
-
-const getPaginationItems = (
-  currentPage: number,
-  totalPages: number
-): PaginationItem[] => {
-  const delta = 1;
-  const range: PaginationItem[] = [];
-
-  for (let page = 1; page <= totalPages; page++) {
-    const isFirstPage = page === 1;
-    const isLastPage = page === totalPages;
-    const isNearCurrentPage =
-      page >= currentPage - delta && page <= currentPage + delta;
-
-    if (isFirstPage || isLastPage || isNearCurrentPage) {
-      range.push(page);
-    }
-  }
-
-  const paginationItems: PaginationItem[] = [];
-
-  range.forEach((page, index) => {
-    const previousPage = range[index - 1];
-
-    if (
-      typeof page === "number" &&
-      typeof previousPage === "number" &&
-      page - previousPage > 1
-    ) {
-      paginationItems.push("...");
-    }
-
-    paginationItems.push(page);
-  });
-
-  return paginationItems;
-};
 
 export default function Customers() {
   const navigate = useNavigate();
@@ -81,13 +48,26 @@ export default function Customers() {
     onUnauthorized: handleUnauthorized,
   });
 
+  const {
+    search,
+    setSearch,
+    currentPage,
+    rowsPerPage,
+    filteredCustomers,
+    paginatedCustomers,
+    paginationItems,
+    totalEntries,
+    totalPages,
+    startIndex,
+    endIndex,
+    handleRowsPerPageChange,
+    handlePageChange,
+  } = useCustomerTable({ customers });
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCustomerId, setEditingCustomerId] = useState<string | null>(
     null
   );
-  const [search, setSearch] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(8);
   const [form, setForm] = useState<CustomerFormState>(INITIAL_CUSTOMER_FORM);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [saving, setSaving] = useState(false);
@@ -245,52 +225,6 @@ export default function Customers() {
     );
   };
 
-  const filteredCustomers = useMemo(() => {
-    const term = search.trim().toLowerCase();
-
-    if (!term) return customers;
-
-    return customers.filter((customer) => {
-      return (
-        customer.full_name.toLowerCase().includes(term) ||
-        customer.email.toLowerCase().includes(term) ||
-        customer.company.toLowerCase().includes(term)
-      );
-    });
-  }, [customers, search]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, rowsPerPage]);
-
-  const totalEntries = filteredCustomers.length;
-  const totalPages = Math.max(1, Math.ceil(totalEntries / rowsPerPage));
-
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [currentPage, totalPages]);
-
-  const startIndex =
-    totalEntries === 0 ? 0 : (currentPage - 1) * rowsPerPage;
-
-  const endIndex = Math.min(startIndex + rowsPerPage, totalEntries);
-
-  const paginatedCustomers = useMemo(() => {
-    return filteredCustomers.slice(startIndex, endIndex);
-  }, [filteredCustomers, startIndex, endIndex]);
-
-  const paginationItems = useMemo(() => {
-    return getPaginationItems(currentPage, totalPages);
-  }, [currentPage, totalPages]);
-
-  const handleRowsPerPageChange = (
-    event: React.ChangeEvent<HTMLSelectElement>
-  ) => {
-    setRowsPerPage(Number(event.target.value));
-  };
-
   return (
     <div className="customers-page">
       <Header />
@@ -356,7 +290,7 @@ export default function Customers() {
               totalPages={totalPages}
               paginationItems={paginationItems}
               onRowsPerPageChange={handleRowsPerPageChange}
-              onPageChange={setCurrentPage}
+              onPageChange={handlePageChange}
             />
           )}
         </section>
