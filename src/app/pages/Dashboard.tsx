@@ -30,23 +30,8 @@ ChartJS.register(
   LineElement,
   Filler
 );
-
-type CustomerStatus = "active" | "pending" | "inactive";
-
-type Customer = {
-  id: string;
-  owner_user_id: string;
-  full_name: string;
-  email: string;
-  phone_number: string;
-  company: string;
-  status: CustomerStatus;
-  country: string;
-  address: string;
-  created_at: string;
-  updated_at: string;
-};
-
+import type { Customer } from "../../features/customers/customer.types";
+import { CUSTOMER_REFRESH_INTERVAL_MS } from "../../features/customers/customer.constants";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -102,7 +87,7 @@ export default function Dashboard() {
 
     const interval = setInterval(() => {
       fetchCustomers(token);
-    }, 5000);
+    }, CUSTOMER_REFRESH_INTERVAL_MS);
 
     return () => clearInterval(interval);
   }, [navigate]);
