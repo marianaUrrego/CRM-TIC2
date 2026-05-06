@@ -27,7 +27,6 @@ import type {
   PaginationItem,
 } from "../../features/customers/customer.types";
 import {
-  ALLOWED_COUNTRIES,
   CUSTOMER_REFRESH_INTERVAL_MS,
   CUSTOMER_STATUS_LABELS,
   CUSTOMER_STATUS_OPTIONS,
