@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Search, X } from "lucide-react";
+import { Plus, Search} from "lucide-react";
 import CustomerTable from "../../features/customers/components/CustomerTable";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
@@ -14,7 +14,6 @@ import type {
 } from "../../features/customers/customer.types";
 import {
   INITIAL_CUSTOMER_FORM,
-  CUSTOMER_STATUS_OPTIONS,
 } from "../../features/customers/customer.constants";
 import {
   normalizeCustomerPayload,
@@ -22,8 +21,9 @@ import {
   validateCustomerField,
   validateCustomerForm,
 } from "../../features/customers/customer.validation";
-import CustomerStatusBadge from "../../features/customers/components/CustomerStatusBadge";
 import CustomerPagination from "../../features/customers/components/CustomerPagination";
+import CustomerFormModal from "../../features/customers/components/CustomerFormModal";
+import CustomerDetailsModal from "../../features/customers/components/CustomerDetailsModal";
 
 const getPaginationItems = (
   currentPage: number,
@@ -363,267 +363,26 @@ export default function Customers() {
       </main>
 
       {isModalOpen && (
-        <div
-          className="customers-modal-backdrop"
-          onClick={handleCloseModal}
-          aria-hidden="true"
-        >
-          <div
-            className="customers-modal customers-modal--styled"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="customers-modal__header customers-modal__header--styled">
-              <h3>{editingCustomerId ? "Edit Customer" : "Add New Customer"}</h3>
-
-              <button
-                type="button"
-                className="customers-modal__close"
-                onClick={handleCloseModal}
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <form
-              className="customers-modal__form customers-modal__form--grid"
-              onSubmit={handleSubmit}
-            >
-              <div className="customers-modal__field">
-                <label htmlFor="full_name">Full Name *</label>
-                <input
-                  id="full_name"
-                  name="full_name"
-                  type="text"
-                  placeholder="John Doe"
-                  value={form.full_name}
-                  onChange={handleInputChange}
-                  required
-                />
-                {formErrors.full_name && (
-                  <span className="customers-field-error">
-                    {formErrors.full_name}
-                  </span>
-                )}
-              </div>
-
-              <div className="customers-modal__field">
-                <label htmlFor="email">Email *</label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="john@company.com"
-                  value={form.email}
-                  onChange={handleInputChange}
-                  required
-                />
-                {formErrors.email && (
-                  <span className="customers-field-error">
-                    {formErrors.email}
-                  </span>
-                )}
-              </div>
-
-              <div className="customers-modal__field">
-                <label htmlFor="phone_number">Phone Number *</label>
-                <input
-                  id="phone_number"
-                  name="phone_number"
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={15}
-                  placeholder="3001234567"
-                  value={form.phone_number}
-                  onChange={handleInputChange}
-                  required
-                />
-                {formErrors.phone_number && (
-                  <span className="customers-field-error">
-                    {formErrors.phone_number}
-                  </span>
-                )}
-              </div>
-
-              <div className="customers-modal__field">
-                <label htmlFor="company">Company *</label>
-                <input
-                  id="company"
-                  name="company"
-                  type="text"
-                  placeholder="Company Inc."
-                  value={form.company}
-                  onChange={handleInputChange}
-                  required
-                />
-                {formErrors.company && (
-                  <span className="customers-field-error">
-                    {formErrors.company}
-                  </span>
-                )}
-              </div>
-
-              <div className="customers-modal__field">
-                <label htmlFor="status">Status</label>
-                <select
-                  id="status"
-                  name="status"
-                  value={form.status}
-                  onChange={handleInputChange}
-                >
-                  {CUSTOMER_STATUS_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="customers-modal__field">
-                <label htmlFor="country">Country *</label>
-                <input
-                  id="country"
-                  name="country"
-                  type="text"
-                  placeholder="Enter country"
-                  value={form.country}
-                  onChange={handleInputChange}
-                  required
-                />
-                {formErrors.country && (
-                  <span className="customers-field-error">
-                    {formErrors.country}
-                  </span>
-                )}
-              </div>
-
-              <div className="customers-modal__field customers-modal__field--full">
-                <label htmlFor="address">Address *</label>
-                <input
-                  id="address"
-                  name="address"
-                  type="text"
-                  placeholder="123 Business Ave, Suite 100"
-                  value={form.address}
-                  onChange={handleInputChange}
-                  required
-                />
-                {formErrors.address && (
-                  <span className="customers-field-error">
-                    {formErrors.address}
-                  </span>
-                )}
-              </div>
-
-              <div className="customers-modal__footer">
-                <button
-                  type="button"
-                  className="customers-modal__cancel"
-                  onClick={handleCloseModal}
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  className="customers-modal__submit customers-modal__submit--styled"
-                  disabled={saving}
-                >
-                  {saving
-                    ? editingCustomerId
-                      ? "Updating..."
-                      : "Creating..."
-                    : editingCustomerId
-                    ? "Update Customer"
-                    : "Create Customer"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <CustomerFormModal
+          form={form}
+          formErrors={formErrors}
+          isEditing={Boolean(editingCustomerId)}
+          saving={saving}
+          onClose={handleCloseModal}
+          onSubmit={handleSubmit}
+          onInputChange={handleInputChange}
+        />
       )}
 
       {viewingCustomer && (
-        <div
-          className="customers-modal-backdrop"
-          onClick={handleCloseView}
-          aria-hidden="true"
-        >
-          <div
-            className="customers-modal customers-modal--styled"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="customers-modal__header customers-modal__header--styled">
-              <h3>Customer Details</h3>
-
-              <button
-                type="button"
-                className="customers-modal__close"
-                onClick={handleCloseView}
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="customers-modal__form customers-modal__form--grid">
-              <div className="customers-modal__field">
-                <label>Name</label>
-                <p>{viewingCustomer.full_name}</p>
-              </div>
-
-              <div className="customers-modal__field">
-                <label>Email</label>
-                <p>{viewingCustomer.email}</p>
-              </div>
-
-              <div className="customers-modal__field">
-                <label>Phone</label>
-                <p>{viewingCustomer.phone_number}</p>
-              </div>
-
-              <div className="customers-modal__field">
-                <label>Company</label>
-                <p>{viewingCustomer.company}</p>
-              </div>
-
-              <div className="customers-modal__field">
-                <label>Status</label>
-                <p>
-                  <CustomerStatusBadge status={viewingCustomer.status} />
-                </p>
-              </div>
-
-              <div className="customers-modal__field customers-modal__field--full">
-                <label>Address</label>
-                <p>{viewingCustomer.address}</p>
-              </div>
-
-              <div className="customers-modal__footer">
-                <button
-                  type="button"
-                  className="customers-modal__cancel"
-                  onClick={handleCloseView}
-                >
-                  Close
-                </button>
-
-                <button
-                  type="button"
-                  className="customers-modal__submit customers-modal__submit--styled"
-                  onClick={() => {
-                    const customer = viewingCustomer;
-                    handleCloseView();
-
-                    if (customer) {
-                      handleEditCustomer(customer);
-                    }
-                  }}
-                >
-                  Edit Customer
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <CustomerDetailsModal
+          customer={viewingCustomer}
+          onClose={handleCloseView}
+          onEditCustomer={(customer) => {
+            handleCloseView();
+            handleEditCustomer(customer);
+          }}
+        />
       )}
     </div>
   );
