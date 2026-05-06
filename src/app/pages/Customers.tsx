@@ -1,16 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Plus,
-  Search,
-  X,
-  MoreVertical,
-  Eye,
-  Pencil,
-  CircleAlert,
-  CheckCircle2,
-  Clock3,
-  XCircle,
-} from "lucide-react";
+import { Plus, Search, X } from "lucide-react";
+import CustomerTable from "../../features/customers/components/CustomerTable";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import { useCustomers } from "../../features/customers/hooks/useCustomers";
@@ -244,6 +234,17 @@ export default function Customers() {
     }
   };
 
+  const handleToggleMenu = (customerId: string) => {
+    setOpenMenuId((prev) => (prev === customerId ? null : customerId));
+    setOpenStatusMenuId(null);
+  };
+
+  const handleToggleStatusMenu = (customerId: string) => {
+    setOpenStatusMenuId((prev) =>
+      prev === customerId ? null : customerId
+    );
+  };
+
   const filteredCustomers = useMemo(() => {
     const term = search.trim().toLowerCase();
 
@@ -330,160 +331,20 @@ export default function Customers() {
             </p>
           )}
 
-          <div className="customers-table-wrapper">
-            <table className="customers-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Company</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={5} className="customers-table__empty">
-                      Loading customers...
-                    </td>
-                  </tr>
-                ) : filteredCustomers.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="customers-table__empty">
-                      No customers yet.
-                    </td>
-                  </tr>
-                ) : (
-                  paginatedCustomers.map((customer) => (
-                    <tr key={customer.id}>
-                      <td className="customers-table__name">
-                        {customer.full_name}
-                      </td>
-                      <td>{customer.email}</td>
-                      <td>{customer.company}</td>
-                      <td>
-                        <CustomerStatusBadge status={customer.status} />
-                      </td>
-                      <td className="customers-actions-cell">
-                        <div
-                          className="customers-actions"
-                          ref={openMenuId === customer.id ? actionsRef : null}
-                        >
-                          <button
-                            type="button"
-                            className="customers-actions__trigger"
-                            onClick={() => {
-                              setOpenMenuId((prev) =>
-                                prev === customer.id ? null : customer.id
-                              );
-                              setOpenStatusMenuId(null);
-                            }}
-                          >
-                            <MoreVertical size={18} />
-                          </button>
-
-                          {openMenuId === customer.id && (
-                            <div className="customers-actions__menu">
-                              <button
-                                type="button"
-                                className="customers-actions__item"
-                                onClick={() => handleViewCustomer(customer)}
-                              >
-                                <Eye size={18} />
-                                <span>View Details</span>
-                              </button>
-
-                              <button
-                                type="button"
-                                className="customers-actions__item"
-                                onClick={() => handleEditCustomer(customer)}
-                              >
-                                <Pencil size={18} />
-                                <span>Edit</span>
-                              </button>
-
-                              <div className="customers-actions__status-wrapper">
-                                <button
-                                  type="button"
-                                  className="customers-actions__item"
-                                  onClick={() =>
-                                    setOpenStatusMenuId((prev) =>
-                                      prev === customer.id ? null : customer.id
-                                    )
-                                  }
-                                >
-                                  <CircleAlert size={18} />
-                                  <span>Change Status</span>
-                                  <span className="customers-actions__arrow">
-                                    ›
-                                  </span>
-                                </button>
-
-                                {openStatusMenuId === customer.id && (
-                                  <div className="customers-actions__submenu">
-                                    <button
-                                      type="button"
-                                      className="customers-actions__submenu-item customers-actions__submenu-item--active"
-                                      onClick={() =>
-                                        handleStatusChange(customer.id, "active")
-                                      }
-                                    >
-                                      <CheckCircle2 size={18} />
-                                      <span>Active</span>
-                                    </button>
-
-                                    <button
-                                      type="button"
-                                      className="customers-actions__submenu-item customers-actions__submenu-item--pending"
-                                      onClick={() =>
-                                        handleStatusChange(
-                                          customer.id,
-                                          "pending"
-                                        )
-                                      }
-                                    >
-                                      <Clock3 size={18} />
-                                      <span>Pending</span>
-                                    </button>
-
-                                    <button
-                                      type="button"
-                                      className="customers-actions__submenu-item customers-actions__submenu-item--inactive"
-                                      onClick={() =>
-                                        handleStatusChange(
-                                          customer.id,
-                                          "inactive"
-                                        )
-                                      }
-                                    >
-                                      <XCircle size={18} />
-                                      <span>Inactive</span>
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-
-                              <button
-                                type="button"
-                                className="customers-actions__item"
-                                onClick={() =>
-                                  handleDeleteCustomer(customer.id)
-                                }
-                              >
-                                <span>Delete</span>
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          <CustomerTable
+            customers={paginatedCustomers}
+            loading={loading}
+            filteredCustomersCount={filteredCustomers.length}
+            openMenuId={openMenuId}
+            openStatusMenuId={openStatusMenuId}
+            actionsRef={actionsRef}
+            onToggleMenu={handleToggleMenu}
+            onToggleStatusMenu={handleToggleStatusMenu}
+            onViewCustomer={handleViewCustomer}
+            onEditCustomer={handleEditCustomer}
+            onDeleteCustomer={handleDeleteCustomer}
+            onStatusChange={handleStatusChange}
+          />
 
           {!loading && totalEntries > 0 && (
             <CustomerPagination
