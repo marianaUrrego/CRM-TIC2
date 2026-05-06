@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Plus,
   Search,
@@ -13,11 +13,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
-import { AuthService } from "../../services/auth.service";
-import {
-  CustomerService,
-  isUnauthorizedError,
-} from "../../services/customer.service";
+import { useCustomers } from "../../features/customers/hooks/useCustomers";
 import type {
   Customer,
   CustomerFormField,
@@ -27,7 +23,6 @@ import type {
   PaginationItem,
 } from "../../features/customers/customer.types";
 import {
-  CUSTOMER_REFRESH_INTERVAL_MS,
   CUSTOMER_STATUS_LABELS,
   CUSTOMER_STATUS_OPTIONS,
   INITIAL_CUSTOMER_FORM,
@@ -40,7 +35,10 @@ import {
   validateCustomerForm,
 } from "../../features/customers/customer.validation";
 
-const getPaginationItems = (currentPage: number, totalPages: number): PaginationItem[] => {
+const getPaginationItems = (
+  currentPage: number,
+  totalPages: number
+): PaginationItem[] => {
   const delta = 1;
   const range: PaginationItem[] = [];
 
@@ -77,69 +75,38 @@ const getPaginationItems = (currentPage: number, totalPages: number): Pagination
 export default function Customers() {
   const navigate = useNavigate();
 
+  const handleUnauthorized = useCallback(() => {
+    navigate("/login");
+  }, [navigate]);
+
+  const {
+    customers,
+    loading,
+    error,
+    setError,
+    saveCustomer,
+    removeCustomer,
+    changeCustomerStatus,
+  } = useCustomers({
+    onUnauthorized: handleUnauthorized,
+  });
+
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingCustomerId, setEditingCustomerId] = useState<string | null>(null);
+  const [editingCustomerId, setEditingCustomerId] = useState<string | null>(
+    null
+  );
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-const [rowsPerPage, setRowsPerPage] = useState(8);
+  const [rowsPerPage, setRowsPerPage] = useState(8);
   const [form, setForm] = useState<CustomerFormState>(INITIAL_CUSTOMER_FORM);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
-
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
 
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [openStatusMenuId, setOpenStatusMenuId] = useState<string | null>(null);
   const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null);
 
   const actionsRef = useRef<HTMLDivElement | null>(null);
-
-  const fetchCustomers = async (tokenParam?: string) => {
-    try {
-      setError("");
-
-      const { token: storedToken } = AuthService.getAuthData();
-      const token = tokenParam || storedToken;
-
-      if (!token) {
-        navigate("/login");
-        return;
-      }
-
-      const data = await CustomerService.getCustomers(token);
-      setCustomers(data);
-    } catch (err) {
-      if (isUnauthorizedError(err)) {
-        navigate("/login");
-        return;
-      }
-
-      console.error("Error fetching customers:", err);
-      setError("Could not load customers.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    const { token } = AuthService.getAuthData();
-
-    if (!token) {
-      navigate("/login");
-      return;
-    }
-
-    setLoading(true);
-    fetchCustomers(token);
-
-    const interval = setInterval(() => {
-      fetchCustomers(token);
-    }, CUSTOMER_REFRESH_INTERVAL_MS);
-
-    return () => clearInterval(interval);
-  }, [navigate]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -153,6 +120,7 @@ const [rowsPerPage, setRowsPerPage] = useState(8);
     };
 
     document.addEventListener("mousedown", handleClickOutside);
+
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
@@ -215,31 +183,12 @@ const [rowsPerPage, setRowsPerPage] = useState(8);
       setSaving(true);
       setError("");
 
-      const { token } = AuthService.getAuthData();
-
-      if (!token) {
-        navigate("/login");
-        return;
-      }
-
       const payload = normalizeCustomerPayload(form);
+      const wasSaved = await saveCustomer(payload, editingCustomerId);
 
-      if (editingCustomerId) {
-        await CustomerService.updateCustomer(editingCustomerId, payload, token);
-      } else {
-        await CustomerService.createCustomer(payload, token);
+      if (wasSaved) {
+        handleCloseModal();
       }
-
-      handleCloseModal();
-      await fetchCustomers();
-    } catch (err) {
-      if (isUnauthorizedError(err)) {
-        navigate("/login");
-        return;
-      }
-
-      console.error("Error saving customer:", err);
-      setError("Could not save customer.");
     } finally {
       setSaving(false);
     }
@@ -268,27 +217,11 @@ const [rowsPerPage, setRowsPerPage] = useState(8);
 
     if (!confirmed) return;
 
-    try {
-      const { token } = AuthService.getAuthData();
+    const wasDeleted = await removeCustomer(id);
 
-      if (!token) {
-        navigate("/login");
-        return;
-      }
-
-      await CustomerService.deleteCustomer(id, token);
-
+    if (wasDeleted) {
       setOpenMenuId(null);
       setOpenStatusMenuId(null);
-      await fetchCustomers();
-    } catch (err) {
-      if (isUnauthorizedError(err)) {
-        navigate("/login");
-        return;
-      }
-
-      console.error("Error deleting customer:", err);
-      setError("Could not delete customer.");
     }
   };
 
@@ -303,27 +236,11 @@ const [rowsPerPage, setRowsPerPage] = useState(8);
   };
 
   const handleStatusChange = async (id: string, status: CustomerStatus) => {
-    try {
-      const { token } = AuthService.getAuthData();
+    const wasUpdated = await changeCustomerStatus(id, status);
 
-      if (!token) {
-        navigate("/login");
-        return;
-      }
-
-      await CustomerService.updateCustomerStatus(id, status, token);
-
+    if (wasUpdated) {
       setOpenMenuId(null);
       setOpenStatusMenuId(null);
-      await fetchCustomers();
-    } catch (err) {
-      if (isUnauthorizedError(err)) {
-        navigate("/login");
-        return;
-      }
-
-      console.error("Error updating customer status:", err);
-      setError("Could not update customer status.");
     }
   };
 
@@ -342,34 +259,36 @@ const [rowsPerPage, setRowsPerPage] = useState(8);
   }, [customers, search]);
 
   useEffect(() => {
-  setCurrentPage(1);
-}, [search, rowsPerPage]);
+    setCurrentPage(1);
+  }, [search, rowsPerPage]);
 
-const totalEntries = filteredCustomers.length;
-const totalPages = Math.max(1, Math.ceil(totalEntries / rowsPerPage));
+  const totalEntries = filteredCustomers.length;
+  const totalPages = Math.max(1, Math.ceil(totalEntries / rowsPerPage));
 
-useEffect(() => {
-  if (currentPage > totalPages) {
-    setCurrentPage(totalPages);
-  }
-}, [currentPage, totalPages]);
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
-const startIndex = totalEntries === 0 ? 0 : (currentPage - 1) * rowsPerPage;
-const endIndex = Math.min(startIndex + rowsPerPage, totalEntries);
+  const startIndex =
+    totalEntries === 0 ? 0 : (currentPage - 1) * rowsPerPage;
 
-const paginatedCustomers = useMemo(() => {
-  return filteredCustomers.slice(startIndex, endIndex);
-}, [filteredCustomers, startIndex, endIndex]);
+  const endIndex = Math.min(startIndex + rowsPerPage, totalEntries);
 
-const paginationItems = useMemo(() => {
-  return getPaginationItems(currentPage, totalPages);
-}, [currentPage, totalPages]);
+  const paginatedCustomers = useMemo(() => {
+    return filteredCustomers.slice(startIndex, endIndex);
+  }, [filteredCustomers, startIndex, endIndex]);
 
-const handleRowsPerPageChange = (
-  event: React.ChangeEvent<HTMLSelectElement>
-) => {
-  setRowsPerPage(Number(event.target.value));
-};
+  const paginationItems = useMemo(() => {
+    return getPaginationItems(currentPage, totalPages);
+  }, [currentPage, totalPages]);
+
+  const handleRowsPerPageChange = (
+    event: React.ChangeEvent<HTMLSelectElement>
+  ) => {
+    setRowsPerPage(Number(event.target.value));
+  };
 
   return (
     <div className="customers-page">
@@ -405,7 +324,11 @@ const handleRowsPerPageChange = (
             />
           </div>
 
-          {error && <p className="customers-feedback customers-feedback--error">{error}</p>}
+          {error && (
+            <p className="customers-feedback customers-feedback--error">
+              {error}
+            </p>
+          )}
 
           <div className="customers-table-wrapper">
             <table className="customers-table">
@@ -435,7 +358,9 @@ const handleRowsPerPageChange = (
                 ) : (
                   paginatedCustomers.map((customer) => (
                     <tr key={customer.id}>
-                      <td className="customers-table__name">{customer.full_name}</td>
+                      <td className="customers-table__name">
+                        {customer.full_name}
+                      </td>
                       <td>{customer.email}</td>
                       <td>{customer.company}</td>
                       <td>
@@ -465,12 +390,20 @@ const handleRowsPerPageChange = (
 
                           {openMenuId === customer.id && (
                             <div className="customers-actions__menu">
-                              <button type="button" className="customers-actions__item" onClick={() => handleViewCustomer(customer)}>
+                              <button
+                                type="button"
+                                className="customers-actions__item"
+                                onClick={() => handleViewCustomer(customer)}
+                              >
                                 <Eye size={18} />
                                 <span>View Details</span>
                               </button>
 
-                              <button type="button" className="customers-actions__item" onClick={() => handleEditCustomer(customer)}>
+                              <button
+                                type="button"
+                                className="customers-actions__item"
+                                onClick={() => handleEditCustomer(customer)}
+                              >
                                 <Pencil size={18} />
                                 <span>Edit</span>
                               </button>
@@ -487,7 +420,9 @@ const handleRowsPerPageChange = (
                                 >
                                   <CircleAlert size={18} />
                                   <span>Change Status</span>
-                                  <span className="customers-actions__arrow">›</span>
+                                  <span className="customers-actions__arrow">
+                                    ›
+                                  </span>
                                 </button>
 
                                 {openStatusMenuId === customer.id && (
@@ -507,7 +442,10 @@ const handleRowsPerPageChange = (
                                       type="button"
                                       className="customers-actions__submenu-item customers-actions__submenu-item--pending"
                                       onClick={() =>
-                                        handleStatusChange(customer.id, "pending")
+                                        handleStatusChange(
+                                          customer.id,
+                                          "pending"
+                                        )
                                       }
                                     >
                                       <Clock3 size={18} />
@@ -518,7 +456,10 @@ const handleRowsPerPageChange = (
                                       type="button"
                                       className="customers-actions__submenu-item customers-actions__submenu-item--inactive"
                                       onClick={() =>
-                                        handleStatusChange(customer.id, "inactive")
+                                        handleStatusChange(
+                                          customer.id,
+                                          "inactive"
+                                        )
                                       }
                                     >
                                       <XCircle size={18} />
@@ -531,7 +472,9 @@ const handleRowsPerPageChange = (
                               <button
                                 type="button"
                                 className="customers-actions__item"
-                                onClick={() => handleDeleteCustomer(customer.id)}
+                                onClick={() =>
+                                  handleDeleteCustomer(customer.id)
+                                }
                               >
                                 <span>Delete</span>
                               </button>
@@ -545,16 +488,21 @@ const handleRowsPerPageChange = (
               </tbody>
             </table>
           </div>
+
           {!loading && totalEntries > 0 && (
             <div className="customers-pagination">
               <div className="customers-pagination__info">
                 <span>
-                  Showing data {startIndex + 1} to {endIndex} of {totalEntries} entries
+                  Showing data {startIndex + 1} to {endIndex} of{" "}
+                  {totalEntries} entries
                 </span>
 
                 <label className="customers-pagination__rows">
                   <span>Rows per page</span>
-                  <select value={rowsPerPage} onChange={handleRowsPerPageChange}>
+                  <select
+                    value={rowsPerPage}
+                    onChange={handleRowsPerPageChange}
+                  >
                     {ROWS_PER_PAGE_OPTIONS.map((option) => (
                       <option key={option} value={option}>
                         {option}
@@ -568,7 +516,9 @@ const handleRowsPerPageChange = (
                 <button
                   type="button"
                   className="customers-pagination__button"
-                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(prev - 1, 1))
+                  }
                   disabled={currentPage === 1}
                   aria-label="Previous page"
                 >
@@ -588,7 +538,9 @@ const handleRowsPerPageChange = (
                       key={item}
                       type="button"
                       className={`customers-pagination__button ${
-                        currentPage === item ? "customers-pagination__button--active" : ""
+                        currentPage === item
+                          ? "customers-pagination__button--active"
+                          : ""
                       }`}
                       onClick={() => setCurrentPage(item)}
                     >
@@ -652,7 +604,9 @@ const handleRowsPerPageChange = (
                   required
                 />
                 {formErrors.full_name && (
-                  <span className="customers-field-error">{formErrors.full_name}</span>
+                  <span className="customers-field-error">
+                    {formErrors.full_name}
+                  </span>
                 )}
               </div>
 
@@ -668,7 +622,9 @@ const handleRowsPerPageChange = (
                   required
                 />
                 {formErrors.email && (
-                  <span className="customers-field-error">{formErrors.email}</span>
+                  <span className="customers-field-error">
+                    {formErrors.email}
+                  </span>
                 )}
               </div>
 
@@ -686,7 +642,9 @@ const handleRowsPerPageChange = (
                   required
                 />
                 {formErrors.phone_number && (
-                  <span className="customers-field-error">{formErrors.phone_number}</span>
+                  <span className="customers-field-error">
+                    {formErrors.phone_number}
+                  </span>
                 )}
               </div>
 
@@ -702,7 +660,9 @@ const handleRowsPerPageChange = (
                   required
                 />
                 {formErrors.company && (
-                  <span className="customers-field-error">{formErrors.company}</span>
+                  <span className="customers-field-error">
+                    {formErrors.company}
+                  </span>
                 )}
               </div>
 
@@ -734,7 +694,9 @@ const handleRowsPerPageChange = (
                   required
                 />
                 {formErrors.country && (
-                  <span className="customers-field-error">{formErrors.country}</span>
+                  <span className="customers-field-error">
+                    {formErrors.country}
+                  </span>
                 )}
               </div>
 
@@ -750,7 +712,9 @@ const handleRowsPerPageChange = (
                   required
                 />
                 {formErrors.address && (
-                  <span className="customers-field-error">{formErrors.address}</span>
+                  <span className="customers-field-error">
+                    {formErrors.address}
+                  </span>
                 )}
               </div>
 
@@ -768,13 +732,20 @@ const handleRowsPerPageChange = (
                   className="customers-modal__submit customers-modal__submit--styled"
                   disabled={saving}
                 >
-                  {saving ? (editingCustomerId ? "Updating..." : "Creating...") : (editingCustomerId ? "Update Customer" : "Create Customer")}
+                  {saving
+                    ? editingCustomerId
+                      ? "Updating..."
+                      : "Creating..."
+                    : editingCustomerId
+                    ? "Update Customer"
+                    : "Create Customer"}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
       {viewingCustomer && (
         <div
           className="customers-modal-backdrop"
@@ -821,7 +792,9 @@ const handleRowsPerPageChange = (
               <div className="customers-modal__field">
                 <label>Status</label>
                 <p>
-                  <span className={`customers-status-badge customers-status-badge--${viewingCustomer.status}`}>
+                  <span
+                    className={`customers-status-badge customers-status-badge--${viewingCustomer.status}`}
+                  >
                     {CUSTOMER_STATUS_LABELS[viewingCustomer.status]}
                   </span>
                 </p>
@@ -833,7 +806,11 @@ const handleRowsPerPageChange = (
               </div>
 
               <div className="customers-modal__footer">
-                <button type="button" className="customers-modal__cancel" onClick={handleCloseView}>
+                <button
+                  type="button"
+                  className="customers-modal__cancel"
+                  onClick={handleCloseView}
+                >
                   Close
                 </button>
 
@@ -841,9 +818,12 @@ const handleRowsPerPageChange = (
                   type="button"
                   className="customers-modal__submit customers-modal__submit--styled"
                   onClick={() => {
-                    const c = viewingCustomer;
+                    const customer = viewingCustomer;
                     handleCloseView();
-                    if (c) handleEditCustomer(c);
+
+                    if (customer) {
+                      handleEditCustomer(customer);
+                    }
                   }}
                 >
                   Edit Customer
