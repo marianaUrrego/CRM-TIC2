@@ -142,4 +142,55 @@ export class AuthService {
       token,
     };
   }
+
+  static async updateProfile(userId: string, data: { name?: string; email?: string }) {
+    const { name, email } = data;
+
+    if (name) {
+      const nameValidation = validateName(name);
+      if (!nameValidation.isValid) throw new Error(nameValidation.message);
+    }
+
+    if (email) {
+      const emailValidation = validateEmail(email);
+      if (!emailValidation.isValid) throw new Error(emailValidation.message);
+    }
+
+    // If email is present, ensure it's not used by another user
+    if (email) {
+      const normalizedEmail = email.trim().toLowerCase();
+      const existing = await pool.query('SELECT id FROM users WHERE email = $1 AND id <> $2', [normalizedEmail, userId]);
+      if (existing.rows.length > 0) {
+        throw new Error('Email is already in use');
+      }
+    }
+
+    const fields: string[] = [];
+    const params: any[] = [];
+    let idx = 1;
+
+    if (name) {
+      fields.push(`full_name = $${idx++}`);
+      params.push(name.trim());
+    }
+
+    if (email) {
+      fields.push(`email = $${idx++}`);
+      params.push(email.trim().toLowerCase());
+    }
+
+    if (fields.length === 0) {
+      const result = await pool.query('SELECT id, full_name, email FROM users WHERE id = $1', [userId]);
+      const u = result.rows[0];
+      return { id: u.id, name: u.full_name, email: u.email };
+    }
+
+    params.push(userId);
+    const query = `UPDATE users SET ${fields.join(', ')} WHERE id = $${idx} RETURNING id, full_name, email`;
+
+    const result = await pool.query(query, params);
+    const updated = result.rows[0];
+
+    return { id: updated.id, name: updated.full_name, email: updated.email };
+  }
 }

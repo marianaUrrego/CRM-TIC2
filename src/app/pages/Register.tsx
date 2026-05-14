@@ -59,7 +59,7 @@ export default function Register() {
           <div className="logo-container">
             <Building2 className="logo-icon" />
           </div>
-          <h1 className="login-title">CRM Cloud</h1>
+          <h1 className="login-title">Orbit</h1>
           <p className="login-subtitle">Create your account</p>
         </div>
 
