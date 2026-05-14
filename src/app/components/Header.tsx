@@ -91,7 +91,7 @@ export default function Header() {
           </div>
 
           <div className="crm-header__brand-text">
-            <h1 className="crm-header__title">CRM Analytics</h1>
+            <h1 className="crm-header__title">Orbit</h1>
             <p className="crm-header__subtitle">Cloud Migration MVP</p>
           </div>
         </div>
